@@ -76,6 +76,38 @@ export function useCreateExpense() {
   })
 }
 
+interface UpdateExpenseInput {
+  id: string
+  category_id?: string
+  amount?: number
+  date?: string
+  memo?: string
+  is_family?: boolean
+}
+
+export function useUpdateExpense() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: UpdateExpenseInput) => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('expenses')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
 export function useDeleteExpense() {
   const queryClient = useQueryClient()
 

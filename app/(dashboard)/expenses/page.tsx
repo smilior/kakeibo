@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { format, addMonths, subMonths } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useUser } from '@/hooks/use-user'
 import { useExpenses, useDeleteExpense } from '@/lib/queries/expenses'
+import { ExpenseEditDialog } from '@/components/features/expenses/expense-edit-dialog'
 import { toast } from 'sonner'
 import type { Expense, Category, User } from '@/types/database'
 
@@ -18,12 +19,19 @@ interface ExpenseWithRelations extends Expense {
 
 export default function ExpensesPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [editingExpense, setEditingExpense] = useState<ExpenseWithRelations | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const { data: user } = useUser()
   const { data: expenses = [], isLoading } = useExpenses(
     user?.household_id ?? undefined,
     currentMonth
   )
   const deleteExpense = useDeleteExpense()
+
+  const handleEdit = (expense: ExpenseWithRelations) => {
+    setEditingExpense(expense)
+    setIsEditDialogOpen(true)
+  }
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
@@ -124,14 +132,23 @@ export default function ExpensesPage() {
                         </p>
                       </div>
                       {expense.user_id === user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(expense)}
-                          disabled={deleteExpense.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(expense)}
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(expense)}
+                            disabled={deleteExpense.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -141,6 +158,14 @@ export default function ExpensesPage() {
           ))}
         </div>
       )}
+
+      {/* 編集ダイアログ */}
+      <ExpenseEditDialog
+        expense={editingExpense}
+        householdId={user?.household_id ?? ''}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
     </div>
   )
 }
