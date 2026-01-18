@@ -137,7 +137,9 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
             type="number"
             inputMode="numeric"
             className="pl-8 text-right text-xl"
+            placeholder="0"
             {...form.register('amount', { valueAsNumber: true })}
+            onFocus={(e) => e.target.select()}
           />
         </div>
         {form.formState.errors.amount && (
