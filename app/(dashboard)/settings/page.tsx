@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Folder, Gauge, Home, MessageSquare } from 'lucide-react'
+import { ChevronRight, Folder, Gauge, Home, MessageSquare, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
 const settingsItems = [
@@ -28,6 +28,12 @@ const settingsItems = [
     icon: MessageSquare,
     label: 'LINE連携',
     description: 'LINE Notify設定',
+  },
+  {
+    href: '/settings/ai',
+    icon: Sparkles,
+    label: 'AI設定',
+    description: 'モデル・プロンプト設定',
   },
 ]
 

@@ -2,6 +2,7 @@
 
 import { useUser } from '@/hooks/use-user'
 import { useDashboardSummary } from '@/lib/queries/dashboard'
+import { DailyAdviceCard } from '@/components/features/dashboard/daily-advice-card'
 import { SummaryCard } from '@/components/features/dashboard/summary-card'
 import { RemainingCounts } from '@/components/features/dashboard/remaining-counts'
 import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
@@ -22,6 +23,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
+      <DailyAdviceCard householdId={user?.household_id ?? undefined} />
+
       <SummaryCard
         totalExpense={summary?.totalExpense ?? 0}
         subscriptionTotal={summary?.subscriptionTotal ?? 0}

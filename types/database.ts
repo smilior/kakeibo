@@ -16,6 +16,8 @@ export type Database = {
           line_notify_token: string | null
           high_amount_threshold: number
           reset_day: number
+          ai_model: string | null
+          ai_system_prompt: string | null
           created_at: string
           updated_at: string
         }
@@ -25,6 +27,8 @@ export type Database = {
           line_notify_token?: string | null
           high_amount_threshold?: number
           reset_day?: number
+          ai_model?: string | null
+          ai_system_prompt?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -34,6 +38,8 @@ export type Database = {
           line_notify_token?: string | null
           high_amount_threshold?: number
           reset_day?: number
+          ai_model?: string | null
+          ai_system_prompt?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -199,6 +205,32 @@ export type Database = {
           is_family?: boolean
           created_at?: string
           updated_at?: string
+        }
+      }
+      daily_advice: {
+        Row: {
+          id: string
+          household_id: string
+          date: string
+          advice: string
+          prompt: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          date: string
+          advice: string
+          prompt?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          date?: string
+          advice?: string
+          prompt?: string | null
+          created_at?: string
         }
       }
       subscriptions: {
