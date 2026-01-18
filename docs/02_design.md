@@ -363,7 +363,7 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_KEY!,
     {
       cookies: {
         getAll() {
@@ -446,9 +446,10 @@ export const config = {
 │ nickname          │       │ icon              │       │ expires_at        │
 │ avatar_url        │       │ sort_order        │       │ used_at           │
 │ household_id (FK) │       │ is_active         │       │ created_by (FK)   │
-│ created_at        │       │ created_at        │       │ created_at        │
-│ updated_at        │       │ updated_at        │       └───────────────────┘
-└─────────┬─────────┘       └─────────┬─────────┘
+│ role              │       │ created_at        │       │ created_at        │
+│ created_at        │       │ updated_at        │       └───────────────────┘
+│ updated_at        │       └─────────┬─────────┘
+└─────────┬─────────┘
           │                           │
           │                           │ 1:N
           │                           ▼
@@ -506,6 +507,8 @@ COMMENT ON COLUMN households.high_amount_threshold IS '高額支出とみなす�
 -- =====================================================
 -- users（ユーザー）
 -- =====================================================
+CREATE TYPE user_role AS ENUM ('owner', 'member');
+
 CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
@@ -513,12 +516,14 @@ CREATE TABLE users (
   nickname VARCHAR(50),  -- 表示用ニックネーム（任意）
   avatar_url TEXT,
   household_id UUID REFERENCES households(id) ON DELETE SET NULL,
+  role user_role NOT NULL DEFAULT 'member',  -- ロール（owner: 所有者, member: メンバー）
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE users IS 'ユーザー';
 COMMENT ON COLUMN users.nickname IS '表示用ニックネーム（例：夫、妻）';
+COMMENT ON COLUMN users.role IS 'ユーザーのロール（owner: 所有者, member: メンバー）';
 
 -- =====================================================
 -- invitations（招待）
@@ -1653,11 +1658,11 @@ export const useUIStore = create<UIStore>((set) => ({
 ```bash
 # .env.local（ローカル開発用）
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...（ローカル用）
+NEXT_PUBLIC_SUPABASE_KEY=eyJ...（ローカル用）
 
 # Vercel環境変数（本番用）
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...（本番用）
+NEXT_PUBLIC_SUPABASE_KEY=eyJ...（本番用）
 ```
 
 ---
@@ -1988,6 +1993,7 @@ export type Database = {
           nickname: string | null
           avatar_url: string | null
           household_id: string | null
+          role: 'owner' | 'member'
           created_at: string
           updated_at: string
         }
@@ -1998,6 +2004,7 @@ export type Database = {
           nickname?: string | null
           avatar_url?: string | null
           household_id?: string | null
+          role?: 'owner' | 'member'
           created_at?: string
           updated_at?: string
         }
@@ -2008,6 +2015,7 @@ export type Database = {
           nickname?: string | null
           avatar_url?: string | null
           household_id?: string | null
+          role?: 'owner' | 'member'
           created_at?: string
           updated_at?: string
         }
@@ -2025,7 +2033,7 @@ export type Database = {
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_KEY=
 
 # 本番のみ（Vercel環境変数で設定）
 # SUPABASE_SERVICE_ROLE_KEY=
