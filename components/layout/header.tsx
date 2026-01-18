@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import type { User } from '@/types/database'
 
 interface HeaderProps {
@@ -19,10 +20,13 @@ interface HeaderProps {
 
 export function Header({ user, householdName }: HeaderProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const supabase = createClient()
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
+    // キャッシュをクリアして前のユーザーのデータを削除
+    queryClient.clear()
     router.push('/login')
     router.refresh()
   }
