@@ -212,6 +212,7 @@ export type Database = {
           renewal_date: string | null
           memo: string | null
           is_active: boolean
+          cancelled_at: string | null
           created_at: string
           updated_at: string
         }
@@ -225,6 +226,7 @@ export type Database = {
           renewal_date?: string | null
           memo?: string | null
           is_active?: boolean
+          cancelled_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -238,6 +240,7 @@ export type Database = {
           renewal_date?: string | null
           memo?: string | null
           is_active?: boolean
+          cancelled_at?: string | null
           created_at?: string
           updated_at?: string
         }

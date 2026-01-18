@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,8 +36,9 @@ export default function SubscriptionsPage() {
   const { data: user } = useUser()
   const { data: categories = [] } = useCategories(user?.household_id ?? undefined)
 
+  // 契約中のサブスク
   const { data: subscriptions = [], isLoading } = useQuery({
-    queryKey: ['subscriptions', 'list', user?.household_id],
+    queryKey: ['subscriptions', 'active', user?.household_id],
     queryFn: async () => {
       if (!user?.household_id) return []
       const supabase = createClient()
@@ -53,6 +55,26 @@ export default function SubscriptionsPage() {
     enabled: !!user?.household_id,
   })
 
+  // 解約済みのサブスク
+  const { data: cancelledSubscriptions = [] } = useQuery({
+    queryKey: ['subscriptions', 'cancelled', user?.household_id],
+    queryFn: async () => {
+      if (!user?.household_id) return []
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*, category:categories(*)')
+        .eq('household_id', user.household_id)
+        .eq('is_active', false)
+        .order('cancelled_at', { ascending: false })
+
+      if (error) throw error
+      return data as SubscriptionWithCategory[]
+    },
+    enabled: !!user?.household_id,
+  })
+
+  // 編集ダイアログの状態
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editing, setEditing] = useState<SubscriptionWithCategory | null>(null)
   const [name, setName] = useState('')
@@ -60,6 +82,11 @@ export default function SubscriptionsPage() {
   const [categoryId, setCategoryId] = useState('')
   const [memo, setMemo] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 解約ダイアログの状態
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<SubscriptionWithCategory | null>(null)
+  const [cancelDate, setCancelDate] = useState('')
 
   const totalAmount = subscriptions.reduce((sum, s) => sum + s.monthly_amount, 0)
 
@@ -137,18 +164,75 @@ export default function SubscriptionsPage() {
     }
   }
 
-  const handleDelete = async (subscription: SubscriptionWithCategory) => {
-    if (!confirm(`「${subscription.name}」を削除しますか？`)) return
+  // 解約ダイアログを開く
+  const handleOpenCancelDialog = (subscription: SubscriptionWithCategory) => {
+    setCancelTarget(subscription)
+    setCancelDate(new Date().toISOString().split('T')[0])
+    setIsCancelDialogOpen(true)
+  }
+
+  // 解約を実行
+  const handleCancel = async () => {
+    if (!cancelTarget || !cancelDate) return
 
     try {
       const supabase = createClient()
       const { error } = await supabase
         .from('subscriptions')
-        .update({ is_active: false })
+        .update({
+          is_active: false,
+          cancelled_at: cancelDate,
+        })
+        .eq('id', cancelTarget.id)
+
+      if (error) throw error
+      toast.success('サブスクを解約しました')
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setIsCancelDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to cancel:', error)
+      toast.error('解約に失敗しました')
+    }
+  }
+
+  // 解約を取り消し（再契約）
+  const handleReactivate = async (subscription: SubscriptionWithCategory) => {
+    if (!confirm(`「${subscription.name}」を再契約しますか？`)) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          is_active: true,
+          cancelled_at: null,
+        })
         .eq('id', subscription.id)
 
       if (error) throw error
-      toast.success('サブスクを削除しました')
+      toast.success('サブスクを再契約しました')
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (error) {
+      console.error('Failed to reactivate:', error)
+      toast.error('再契約に失敗しました')
+    }
+  }
+
+  // 完全削除
+  const handlePermanentDelete = async (subscription: SubscriptionWithCategory) => {
+    if (!confirm(`「${subscription.name}」を完全に削除しますか？\nこの操作は取り消せません。`)) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('subscriptions')
+        .delete()
+        .eq('id', subscription.id)
+
+      if (error) throw error
+      toast.success('サブスクを完全に削除しました')
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     } catch (error) {
@@ -167,7 +251,7 @@ export default function SubscriptionsPage() {
         </Button>
       </div>
 
-      {/* 合計 */}
+      {/* 月額合計 */}
       <Card className="mb-4">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">月額合計</CardTitle>
@@ -182,6 +266,7 @@ export default function SubscriptionsPage() {
         </CardContent>
       </Card>
 
+      {/* 編集ダイアログ */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -243,6 +328,38 @@ export default function SubscriptionsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* 解約ダイアログ */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>サブスクを解約</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              「{cancelTarget?.name}」を解約します。解約日を指定してください。
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="cancelDate">解約日</Label>
+              <Input
+                id="cancelDate"
+                type="date"
+                value={cancelDate}
+                onChange={(e) => setCancelDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+              キャンセル
+            </Button>
+            <Button variant="destructive" onClick={handleCancel}>
+              解約する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 契約中のサブスク一覧 */}
       {isLoading ? (
         <div className="flex justify-center py-8">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -280,13 +397,56 @@ export default function SubscriptionsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleDelete(subscription)}
+                  onClick={() => handleOpenCancelDialog(subscription)}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <XCircle className="h-4 w-4 text-destructive" />
                 </Button>
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* 解約済みサブスク一覧 */}
+      {cancelledSubscriptions.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-3 text-base font-semibold text-muted-foreground">
+            解約済み
+          </h2>
+          <div className="space-y-2">
+            {cancelledSubscriptions.map((subscription) => (
+              <Card key={subscription.id} className="opacity-60">
+                <CardContent className="flex items-center gap-3 p-4">
+                  <span className="text-2xl">{subscription.category?.icon || '💳'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{subscription.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {subscription.cancelled_at} 解約
+                    </p>
+                  </div>
+                  <p className="font-semibold text-muted-foreground">
+                    ¥{subscription.monthly_amount.toLocaleString()}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleReactivate(subscription)}
+                    title="再契約"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handlePermanentDelete(subscription)}
+                    title="完全に削除"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>

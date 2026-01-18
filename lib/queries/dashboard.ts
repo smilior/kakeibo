@@ -22,6 +22,7 @@ export interface UserTotal {
   amount: number
   count: number
   isFamily?: boolean
+  isSubscription?: boolean
 }
 
 export interface RemainingCount {
@@ -85,12 +86,14 @@ export function useDashboardSummary(householdId: string | undefined) {
 
       if (expensesError) throw expensesError
 
-      // サブスク合計を取得
+      // サブスク合計を取得（対象期間に契約していたもの）
+      // 条件: contract_date <= 期間終了日 AND (cancelled_at IS NULL OR cancelled_at >= 期間開始日)
       const { data: subscriptions, error: subsError } = await supabase
         .from('subscriptions')
         .select('monthly_amount')
         .eq('household_id', householdId)
-        .eq('is_active', true)
+        .lte('contract_date', period.end_date)
+        .or(`cancelled_at.is.null,cancelled_at.gte.${period.start_date}`)
 
       if (subsError) throw subsError
 
@@ -181,6 +184,29 @@ export function useDashboardSummary(householdId: string | undefined) {
           }
         >
       )
+
+      // サブスクを別枠として追加
+      if (subscriptionTotal > 0) {
+        userTotals['subscription'] = {
+          userId: 'subscription',
+          userName: 'サブスク',
+          nickname: 'サブスク',
+          amount: subscriptionTotal,
+          count: subscriptions.length,
+          isSubscription: true,
+        }
+      }
+
+      // カテゴリ別にもサブスクを追加
+      if (subscriptionTotal > 0) {
+        categoryTotals['subscription'] = {
+          categoryId: 'subscription',
+          categoryName: 'サブスク',
+          icon: '🔄',
+          amount: subscriptionTotal,
+          count: subscriptions.length,
+        }
+      }
 
       const categoryTotalsArray = Object.values(categoryTotals) as CategoryTotal[]
       const userTotalsArray = Object.values(userTotals) as UserTotal[]
