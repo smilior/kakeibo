@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
@@ -32,6 +39,7 @@ export default function HouseholdPage() {
   const [highAmountThreshold, setHighAmountThreshold] = useState(
     user?.household?.high_amount_threshold || 5000
   )
+  const [resetDay, setResetDay] = useState(user?.household?.reset_day || 1)
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [memberToRemove, setMemberToRemove] = useState<{
@@ -94,6 +102,7 @@ export default function HouseholdPage() {
         .update({
           name: householdName,
           high_amount_threshold: highAmountThreshold,
+          reset_day: resetDay,
         })
         .eq('id', user.household_id)
 
@@ -200,6 +209,27 @@ export default function HouseholdPage() {
               />
               <p className="text-xs text-muted-foreground">
                 この金額以上の支出は「高額支出」として通知されます
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="resetDay">締め日</Label>
+              <Select
+                value={String(resetDay)}
+                onValueChange={(value) => setResetDay(parseInt(value))}
+              >
+                <SelectTrigger id="resetDay">
+                  <SelectValue placeholder="締め日を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...Array(28)].map((_, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>
+                      {i + 1}日
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                毎月この日から翌月の前日までが1ヶ月の計測期間になります
               </p>
             </div>
             <Button onClick={handleSave} disabled={isSaving} className="w-full">

@@ -25,6 +25,7 @@ export default function DashboardPage() {
       <SummaryCard
         totalExpense={summary?.totalExpense ?? 0}
         subscriptionTotal={summary?.subscriptionTotal ?? 0}
+        period={summary?.period}
       />
 
       <RemainingCounts counts={summary?.remainingCounts ?? []} />

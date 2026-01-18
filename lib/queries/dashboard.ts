@@ -32,6 +32,11 @@ export interface RemainingCount {
   remaining_count: number
 }
 
+export interface PeriodInfo {
+  startDate: string
+  endDate: string
+}
+
 export interface DashboardSummary {
   totalExpense: number
   subscriptionTotal: number
@@ -40,6 +45,7 @@ export interface DashboardSummary {
   categoryTotals: CategoryTotal[]
   userTotals: UserTotal[]
   remainingCounts: RemainingCount[]
+  period: PeriodInfo
 }
 
 export function useDashboardSummary(householdId: string | undefined) {
@@ -49,11 +55,21 @@ export function useDashboardSummary(householdId: string | undefined) {
       if (!householdId) return null
 
       const supabase = createClient()
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-      // 今月の支出を取得
+      // 締め日に基づく計測期間を取得
+      const { data: periodData, error: periodError } = await supabase.rpc(
+        'get_current_period',
+        { p_household_id: householdId }
+      )
+
+      if (periodError) throw periodError
+
+      const period = periodData?.[0] || {
+        start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        end_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+      }
+
+      // 計測期間内の支出を取得
       const { data: expenses, error: expensesError } = await supabase
         .from('expenses')
         .select(`
@@ -62,8 +78,8 @@ export function useDashboardSummary(householdId: string | undefined) {
           user:users(id, name, nickname)
         `)
         .eq('household_id', householdId)
-        .gte('date', startOfMonth.toISOString().split('T')[0])
-        .lte('date', endOfMonth.toISOString().split('T')[0])
+        .gte('date', period.start_date)
+        .lte('date', period.end_date)
         .order('date', { ascending: false })
 
       if (expensesError) throw expensesError
@@ -162,6 +178,10 @@ export function useDashboardSummary(householdId: string | undefined) {
         categoryTotals: categoryTotalsArray.sort((a, b) => b.amount - a.amount),
         userTotals: userTotalsArray,
         remainingCounts: (remainingCounts || []) as RemainingCount[],
+        period: {
+          startDate: period.start_date,
+          endDate: period.end_date,
+        },
       }
     },
     enabled: !!householdId,
