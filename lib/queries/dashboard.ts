@@ -21,6 +21,7 @@ export interface UserTotal {
   nickname?: string | null
   amount: number
   count: number
+  isFamily?: boolean
 }
 
 export interface RemainingCount {
@@ -138,21 +139,34 @@ export function useDashboardSummary(householdId: string | undefined) {
         >
       )
 
-      // ユーザー別集計
+      // ユーザー別集計（家族支出は別枠）
       const userTotals = expenses.reduce(
         (acc, expense) => {
-          const userId = expense.user_id
-          if (!acc[userId]) {
-            acc[userId] = {
-              userId,
-              userName: expense.user?.name || '',
-              nickname: expense.user?.nickname,
-              amount: 0,
-              count: 0,
+          // is_familyがtrueの場合は「家族」として集計
+          const key = expense.is_family ? 'family' : expense.user_id
+          if (!acc[key]) {
+            if (expense.is_family) {
+              acc[key] = {
+                userId: 'family',
+                userName: '家族',
+                nickname: '家族',
+                amount: 0,
+                count: 0,
+                isFamily: true,
+              }
+            } else {
+              acc[key] = {
+                userId: expense.user_id,
+                userName: expense.user?.name || '',
+                nickname: expense.user?.nickname,
+                amount: 0,
+                count: 0,
+                isFamily: false,
+              }
             }
           }
-          acc[userId].amount += expense.amount
-          acc[userId].count += 1
+          acc[key].amount += expense.amount
+          acc[key].count += 1
           return acc
         },
         {} as Record<
@@ -163,6 +177,7 @@ export function useDashboardSummary(householdId: string | undefined) {
             nickname?: string | null
             amount: number
             count: number
+            isFamily?: boolean
           }
         >
       )

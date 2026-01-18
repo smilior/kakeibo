@@ -39,6 +39,7 @@ interface CreateExpenseInput {
   amount: number
   date: string
   memo?: string
+  is_family?: boolean
 }
 
 export function useCreateExpense() {

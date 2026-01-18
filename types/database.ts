@@ -172,6 +172,7 @@ export type Database = {
           amount: number
           date: string
           memo: string | null
+          is_family: boolean
           created_at: string
           updated_at: string
         }
@@ -183,6 +184,7 @@ export type Database = {
           amount: number
           date?: string
           memo?: string | null
+          is_family?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -194,6 +196,7 @@ export type Database = {
           amount?: number
           date?: string
           memo?: string | null
+          is_family?: boolean
           created_at?: string
           updated_at?: string
         }
