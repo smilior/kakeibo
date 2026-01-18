@@ -80,18 +80,18 @@
 
 | カテゴリ | 技術 | バージョン | 選定理由 |
 |---------|------|-----------|---------|
-| **フレームワーク** | Next.js | 15.x | App Router、RSC対応、Vercel最適化 |
+| **フレームワーク** | Next.js | 16.x | App Router、RSC対応、Vercel最適化 |
 | **言語** | TypeScript | 5.x | 型安全性、開発効率向上 |
 | **UIライブラリ** | shadcn/ui | latest | カスタマイズ性、アクセシビリティ |
-| **スタイリング** | Tailwind CSS | 3.x | ユーティリティファースト、shadcn/ui前提 |
-| **状態管理** | Zustand | 4.x | 軽量、シンプル、TypeScript親和性 |
+| **スタイリング** | Tailwind CSS | 4.x | ユーティリティファースト、shadcn/ui前提 |
+| **状態管理** | Zustand | 5.x | 軽量、シンプル、TypeScript親和性 |
 | **データフェッチ** | TanStack Query | 5.x | キャッシュ、楽観的更新、リアルタイム |
 | **フォーム** | React Hook Form + Zod | latest | バリデーション、パフォーマンス |
-| **グラフ** | Recharts | 2.x | React特化、カスタマイズ性 |
-| **日付操作** | date-fns | 3.x | 軽量、Tree-shaking対応 |
+| **グラフ** | Recharts | 3.x | React特化、カスタマイズ性 |
+| **日付操作** | date-fns | 4.x | 軽量、Tree-shaking対応 |
 | **BaaS** | Supabase | latest | 認証・DB一元管理、無料枠十分 |
 | **ホスティング** | Vercel | - | Next.js最適化、自動デプロイ |
-| **PWA** | next-pwa | latest | ホーム画面追加、オフライン対応 |
+| **PWA** | Serwist | latest | ホーム画面追加、オフライン対応 |
 
 ### 1.3 カラーパレット（Claudeテーマ・暖色系）
 
