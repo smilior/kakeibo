@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks, isSameMonth } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -121,7 +121,13 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
       amount: item.amount,
     }))
 
-  const periodStartStr = format(monthStart, 'yyyy-MM-dd')
+  // AI分析用: 先月の開始日を計算
+  const lastMonthStart = useMemo(() => {
+    const today = new Date()
+    const lastMonth = subMonths(today, 1)
+    return startOfMonth(lastMonth)
+  }, [])
+  const analysisStartStr = format(lastMonthStart, 'yyyy-MM-dd')
 
   return (
     <div className="space-y-4">
@@ -151,11 +157,11 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
         </div>
       ) : (
         <>
-          {/* AI分析 */}
+          {/* AI分析（先月の振り返り） */}
           <PeriodAnalysisCard
             householdId={householdId}
             periodType="month"
-            periodStart={periodStartStr}
+            periodStart={analysisStartStr}
           />
 
           {/* 先月比 */}
