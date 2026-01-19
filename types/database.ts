@@ -6,6 +6,13 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// 家族情報の型定義
+export interface FamilyInfo {
+  children?: { name?: string; birthDate: string }[]  // birthDate: YYYY-MM-DD形式
+  region?: string
+  interests?: string[]
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -18,6 +25,7 @@ export type Database = {
           reset_day: number
           ai_model: string | null
           ai_system_prompt: string | null
+          family_info: FamilyInfo | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +37,7 @@ export type Database = {
           reset_day?: number
           ai_model?: string | null
           ai_system_prompt?: string | null
+          family_info?: FamilyInfo | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +49,7 @@ export type Database = {
           reset_day?: number
           ai_model?: string | null
           ai_system_prompt?: string | null
+          family_info?: FamilyInfo | null
           created_at?: string
           updated_at?: string
         }

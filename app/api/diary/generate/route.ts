@@ -1,52 +1,78 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/lib/supabase/server'
+import type { FamilyInfo } from '@/types/database'
 
-export const maxDuration = 60 // Vercel Functionsの最大実行時間
+export const maxDuration = 60
 
 // 曜日に応じたテーマを取得
 function getDiaryTheme(dayOfWeek: number): { theme: string; instruction: string } {
   switch (dayOfWeek) {
     case 1: // 月曜
       return {
-        theme: '今週の目標設定',
-        instruction: '新しい週の始まりです。今週の節約目標を一緒に立てましょう。具体的な数字を含めた目標を提案してください。',
+        theme: '今週の家族イベント',
+        instruction: '今週末に家族で楽しめるイベントやお出かけスポットを提案してください。季節に合った無料or低コストのものを中心に。',
       }
     case 2: // 火曜
       return {
-        theme: '節約Tips',
-        instruction: '日常生活で使える実践的な節約テクニックを紹介してください。',
+        theme: '子供と一緒にできること',
+        instruction: '子供の年齢に合わせた、家で一緒にできる遊びや学びの提案をしてください。工作、料理、実験など。',
       }
     case 3: // 水曜
       return {
-        theme: 'お金の知識',
-        instruction: 'お金に関する豆知識やベストプラクティスを楽しく教えてください。',
+        theme: '夫婦の会話ネタ',
+        instruction: '夫婦で話し合うと良いトピックや、最近の話題のニュースについて会話のきっかけを提供してください。',
       }
     case 4: // 木曜
       return {
-        theme: '夫婦のお金の話',
-        instruction: '夫婦でお金の話をすることの大切さや、コミュニケーションのコツを伝えてください。',
+        theme: '季節を楽しむ',
+        instruction: '今の季節ならではの楽しみ方を提案してください。旬の食材、季節の行事、自然の変化など。',
       }
     case 5: // 金曜
       return {
-        theme: '週末の計画',
-        instruction: '週末の出費に備えて、賢くお金を使う計画を立てましょう。',
+        theme: '週末のおすすめ',
+        instruction: '週末に家族で楽しめる具体的なプランを提案してください。お金をかけずに楽しめる方法を中心に。',
       }
     case 6: // 土曜
       return {
-        theme: '振り返りと成果確認',
-        instruction: '今週の支出を振り返り、良かった点を褒め、改善点を優しく提案してください。',
+        theme: 'お出かけスポット',
+        instruction: '地域の公園、自然スポット、無料施設など、家族でお出かけできる場所を紹介してください。',
       }
     case 0: // 日曜
       return {
-        theme: '未来への投資',
-        instruction: '将来の夢や目標に向けて、今日からできることを考えましょう。',
+        theme: '来週に向けて',
+        instruction: '来週の家族の予定や、子供の学校行事などに向けた準備のアドバイスをしてください。',
       }
     default:
       return {
-        theme: 'お金の知識',
-        instruction: 'お金に関する豆知識を楽しく教えてください。',
+        theme: '家族の時間',
+        instruction: '家族で過ごす時間を大切にするためのアイデアを提案してください。',
       }
+  }
+}
+
+// 季節情報を取得
+function getSeasonInfo(month: number): { season: string; events: string[] } {
+  if (month >= 3 && month <= 5) {
+    return {
+      season: '春',
+      events: ['お花見', 'ピクニック', '新学期', 'ゴールデンウィーク', '母の日', 'こどもの日'],
+    }
+  } else if (month >= 6 && month <= 8) {
+    return {
+      season: '夏',
+      events: ['梅雨', '七夕', '夏祭り', '花火大会', 'プール', '夏休み', 'お盆'],
+    }
+  } else if (month >= 9 && month <= 11) {
+    return {
+      season: '秋',
+      events: ['紅葉', '運動会', 'ハロウィン', '七五三', '読書の秋', '食欲の秋'],
+    }
+  } else {
+    return {
+      season: '冬',
+      events: ['クリスマス', 'お正月', '節分', 'バレンタイン', '雪遊び', 'スキー'],
+    }
   }
 }
 
@@ -54,7 +80,6 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient()
 
-    // リクエストボディから強制再生成フラグを取得
     let force = false
     try {
       const body = await request.json()
@@ -84,10 +109,10 @@ export async function POST(request: Request) {
 
     const householdId = userData.household_id
 
-    // 家計設定（AI設定含む）を取得
+    // 家計設定と家族情報を取得
     const { data: household, error: householdError } = await supabase
       .from('households')
-      .select('ai_model')
+      .select('ai_model, family_info')
       .eq('id', householdId)
       .single()
 
@@ -96,23 +121,26 @@ export async function POST(request: Request) {
     }
 
     const aiModel = household?.ai_model || 'gemini-3-flash-preview'
+    const familyInfo = household?.family_info as FamilyInfo | null
 
-    const today = new Date().toISOString().split('T')[0]
-    const dayOfWeek = new Date().getDay() // 0=日, 1=月, ..., 5=金, 6=土
-    const dayName = new Date().toLocaleDateString('ja-JP', { weekday: 'long' })
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    const dayOfWeek = today.getDay()
+    const dayName = today.toLocaleDateString('ja-JP', { weekday: 'long' })
+    const month = today.getMonth() + 1
     const { theme, instruction } = getDiaryTheme(dayOfWeek)
+    const { season, events } = getSeasonInfo(today.getMonth())
 
     // 今日の日記が既に存在するかチェック
     const { data: existingDiary } = await supabase
       .from('ai_diaries')
       .select('id')
       .eq('household_id', householdId)
-      .eq('date', today)
+      .eq('date', todayStr)
       .single()
 
     if (existingDiary) {
       if (force) {
-        // 強制再生成の場合は既存の日記を削除
         await supabase
           .from('ai_diaries')
           .delete()
@@ -122,107 +150,41 @@ export async function POST(request: Request) {
       }
     }
 
-    // 今月の支出データを取得
-    const startOfMonth = new Date()
-    startOfMonth.setDate(1)
-    const startDate = startOfMonth.toISOString().split('T')[0]
-
-    const { data: expenses } = await supabase
-      .from('expenses')
-      .select(`
-        amount,
-        date,
-        is_family,
-        category:categories(name),
-        user:users(nickname)
-      `)
-      .eq('household_id', householdId)
-      .gte('date', startDate)
-      .order('date', { ascending: false })
-
-    // 回数ルールと現在の利用状況を取得
-    const { data: rules } = await supabase
-      .from('rules')
-      .select(`
-        monthly_limit,
-        category:categories(name)
-      `)
-      .eq('household_id', householdId)
-      .eq('is_active', true)
-
-    // サブスク情報を取得
-    const { data: subscriptions } = await supabase
-      .from('subscriptions')
-      .select('name, monthly_amount')
-      .eq('household_id', householdId)
-      .eq('is_active', true)
-
-    // カテゴリ別・ユーザー別の支出集計
-    const categoryTotals: Record<string, { amount: number; count: number }> = {}
-    const userTotals: Record<string, { amount: number; count: number }> = {}
-    let totalExpense = 0
-
-    expenses?.forEach((expense) => {
-      const category = expense.category as unknown as { name: string } | null
-      const userInfo = expense.user as unknown as { nickname: string } | null
-      const categoryName = category?.name || 'その他'
-      const userName = expense.is_family ? '家族' : (userInfo?.nickname || '不明')
-
-      // カテゴリ別集計
-      if (!categoryTotals[categoryName]) {
-        categoryTotals[categoryName] = { amount: 0, count: 0 }
+    // 生年月日から年齢を計算する関数
+    const calculateAge = (birthDate: string): number => {
+      if (!birthDate) return 0
+      const birth = new Date(birthDate)
+      let age = today.getFullYear() - birth.getFullYear()
+      const monthDiff = today.getMonth() - birth.getMonth()
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--
       }
-      categoryTotals[categoryName].amount += expense.amount
-      categoryTotals[categoryName].count += 1
+      return age
+    }
 
-      // ユーザー別集計
-      if (!userTotals[userName]) {
-        userTotals[userName] = { amount: 0, count: 0 }
-      }
-      userTotals[userName].amount += expense.amount
-      userTotals[userName].count += 1
+    // 家族情報を文字列化
+    const childrenInfo = familyInfo?.children?.length
+      ? familyInfo.children
+          .filter((c) => c.birthDate)
+          .map((c) => `${c.name || '子供'}（${calculateAge(c.birthDate)}歳）`)
+          .join('、')
+      : null
 
-      totalExpense += expense.amount
-    })
-
-    // ルールの達成状況
-    const ruleStatus = rules?.map((rule) => {
-      const category = rule.category as unknown as { name: string } | null
-      const categoryName = category?.name || ''
-      const current = categoryTotals[categoryName]?.count || 0
-      return {
-        category: categoryName,
-        limit: rule.monthly_limit,
-        current,
-        remaining: rule.monthly_limit - current,
-      }
-    })
-
-    // サブスク合計
-    const subscriptionTotal =
-      subscriptions?.reduce((sum, s) => sum + s.monthly_amount, 0) || 0
-
-    // 夫婦バランスの分析
-    const userEntries = Object.entries(userTotals).filter(([name]) => name !== '家族')
-    const balanceAnalysis = userEntries.length >= 2
-      ? (() => {
-          const sorted = userEntries.sort((a, b) => b[1].amount - a[1].amount)
-          const [top, second] = sorted
-          const diff = top[1].amount - second[1].amount
-          return `${top[0]}が${second[0]}より¥${diff.toLocaleString()}多く支出しています。`
-        })()
+    const regionInfo = familyInfo?.region || null
+    const interestsInfo = familyInfo?.interests?.length
+      ? familyInfo.interests.join('、')
       : null
 
     // 日記用プロンプト
-    const systemPrompt = `あなたは家計管理をサポートする「親友」のような存在です。
-友達に話しかけるような親しみやすい口調で、毎日の日記を書いてください。
+    const systemPrompt = `あなたは家族の「親友」のような存在です。
+夫婦と子供たちが一緒に楽しめる情報を、親しみやすい口調で伝えてください。
 
 ## あなたの役割
-- 夫婦の共通目標を意識させる
-- お金の知識を楽しく教える
-- モチベーションを維持する
-- 成果を一緒に喜ぶ
-- 小さな努力も見逃さず褒める
+- 家族で楽しめるアイデアを提案する
+- 季節や地域に合った情報を提供する
+- 子供の年齢に合わせた提案をする
+- お金をかけずに楽しめる方法を優先する
+- 夫婦の会話のきっかけを作る
 
 ## 今日のテーマ
 ${theme}
@@ -233,55 +195,31 @@ ${instruction}
 ## 出力ルール
 1. 300〜500文字程度で書く
 2. 「〜だね」「〜だよ」など親しみやすい口調を使う
-3. 具体的な数字や金額を含める
+3. 具体的な提案を2〜3つ含める
 4. 絵文字は使わない（！や♪は使ってOK）
-5. 前向きで励みになる内容にする
-6. 夫婦で一緒に頑張っている感を出す
-7. 今日のテーマに沿った内容にする
+5. 前向きで楽しい内容にする
+6. 支出分析や節約アドバイスは含めない
+7. 家族みんなで楽しめる内容にする
 
 出力は日記本文のみ。前置きや説明は不要。`
 
-    // 支出データ部分
-    const dataPrompt = `
-## 今月の支出データ
-- 総支出: ¥${totalExpense.toLocaleString()}
-- サブスク月額合計: ¥${subscriptionTotal.toLocaleString()}
-
-### カテゴリ別
-${Object.entries(categoryTotals)
-  .sort((a, b) => b[1].amount - a[1].amount)
-  .slice(0, 5) // 上位5カテゴリ
-  .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()} (${data.count}回)`)
-  .join('\n')}
-
-### 夫婦別支出
-${Object.entries(userTotals)
-  .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()} (${data.count}回)`)
-  .join('\n')}
-${balanceAnalysis ? `\n※ ${balanceAnalysis}` : ''}
-
-## 回数ルールの状況
-${
-  ruleStatus && ruleStatus.length > 0
-    ? ruleStatus
-        .map((r) => {
-          const status = r.remaining <= 0
-            ? '上限到達'
-            : r.remaining === 1
-              ? 'あと1回'
-              : `残り${r.remaining}回`
-          return `- ${r.category}: ${r.current}/${r.limit}回 (${status})`
-        })
-        .join('\n')
-    : '- ルール設定なし'
-}
+    // 家族・地域情報
+    const contextPrompt = `
+## 家族情報
+${childrenInfo ? `- お子さん: ${childrenInfo}` : '- お子さんの情報: 未設定'}
+${regionInfo ? `- 住んでいる地域: ${regionInfo}` : '- 地域: 未設定'}
+${interestsInfo ? `- 興味・関心: ${interestsInfo}` : ''}
 
 ## 今日の情報
-- 日付: ${today}（${dayName}）
-- 月の${new Date().getDate()}日目（残り${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate()}日）
+- 日付: ${todayStr}（${dayName}）
+- 季節: ${season}（${month}月）
+- この時期のイベント: ${events.join('、')}
+
+${regionInfo ? `## ${regionInfo}周辺の特徴を考慮してください` : ''}
+${childrenInfo ? `## 子供の年齢に合わせた提案をしてください` : ''}
 `
 
-    const prompt = `${systemPrompt}\n${dataPrompt}`
+    const prompt = `${systemPrompt}\n${contextPrompt}`
 
     // Gemini APIを呼び出し
     const ai = new GoogleGenAI({
@@ -298,12 +236,12 @@ ${
       ],
     })
 
-    const content = response.text?.trim() || '今日も一緒に頑張ろうね！'
+    const content = response.text?.trim() || '今日も家族で素敵な一日を過ごそう！'
 
     // DBに保存
     const { error: insertError } = await supabase.from('ai_diaries').insert({
       household_id: householdId,
-      date: today,
+      date: todayStr,
       content,
       prompt,
       theme,

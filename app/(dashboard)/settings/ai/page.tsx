@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Save, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Save, RotateCcw, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +19,7 @@ import { useUser } from '@/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
+import type { FamilyInfo } from '@/types/database'
 
 // プリセットプロンプト定義
 const PROMPT_PRESETS = [
@@ -132,6 +133,11 @@ export default function AISettingsPage() {
   const { data: user } = useUser()
   const [model, setModel] = useState('gemini-3-flash-preview')
   const [systemPrompt, setSystemPrompt] = useState('')
+  const [familyInfo, setFamilyInfo] = useState<FamilyInfo>({
+    children: [],
+    region: '',
+    interests: [],
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -143,13 +149,16 @@ export default function AISettingsPage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('households')
-        .select('ai_model, ai_system_prompt')
+        .select('ai_model, ai_system_prompt, family_info')
         .eq('id', user.household_id)
         .single()
 
       if (!error && data) {
         setModel(data.ai_model || 'gemini-3-flash-preview')
         setSystemPrompt(data.ai_system_prompt || DEFAULT_SYSTEM_PROMPT)
+        if (data.family_info) {
+          setFamilyInfo(data.family_info as FamilyInfo)
+        }
       }
       setIsLoading(false)
     }
@@ -168,6 +177,7 @@ export default function AISettingsPage() {
         .update({
           ai_model: model,
           ai_system_prompt: systemPrompt,
+          family_info: familyInfo,
         })
         .eq('id', user.household_id)
 
@@ -181,6 +191,45 @@ export default function AISettingsPage() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  // 子供を追加
+  const handleAddChild = () => {
+    setFamilyInfo((prev) => ({
+      ...prev,
+      children: [...(prev.children || []), { name: '', birthDate: '' }],
+    }))
+  }
+
+  // 子供を削除
+  const handleRemoveChild = (index: number) => {
+    setFamilyInfo((prev) => ({
+      ...prev,
+      children: prev.children?.filter((_, i) => i !== index) || [],
+    }))
+  }
+
+  // 子供の情報を更新
+  const handleUpdateChild = (index: number, field: 'name' | 'birthDate', value: string) => {
+    setFamilyInfo((prev) => ({
+      ...prev,
+      children: prev.children?.map((child, i) =>
+        i === index ? { ...child, [field]: value } : child
+      ) || [],
+    }))
+  }
+
+  // 生年月日から年齢を計算
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0
+    const today = new Date()
+    const birth = new Date(birthDate)
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--
+    }
+    return age
   }
 
   const handleReset = () => {
@@ -208,6 +257,84 @@ export default function AISettingsPage() {
       </div>
 
       <div className="space-y-4">
+        {/* 家族情報 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">家族情報（AI日記用）</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 地域 */}
+            <div className="space-y-2">
+              <Label>住んでいる地域</Label>
+              <Input
+                placeholder="例: 岐阜県高山市"
+                value={familyInfo.region || ''}
+                onChange={(e) =>
+                  setFamilyInfo((prev) => ({ ...prev, region: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                近場のお出かけスポットや季節のイベントを提案します
+              </p>
+            </div>
+
+            {/* 子供 */}
+            <div className="space-y-2">
+              <Label>お子さん</Label>
+              {familyInfo.children?.map((child, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    placeholder="名前（任意）"
+                    value={child.name || ''}
+                    onChange={(e) => handleUpdateChild(index, 'name', e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="date"
+                    value={child.birthDate || ''}
+                    onChange={(e) => handleUpdateChild(index, 'birthDate', e.target.value)}
+                    className="w-36"
+                  />
+                  {child.birthDate && (
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      ({calculateAge(child.birthDate)}歳)
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveChild(index)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={handleAddChild}>
+                <Plus className="mr-1 h-4 w-4" />
+                子供を追加
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                生年月日を入力すると年齢が自動計算されます
+              </p>
+            </div>
+
+            {/* 興味・関心 */}
+            <div className="space-y-2">
+              <Label>家族の興味・関心（カンマ区切り）</Label>
+              <Input
+                placeholder="例: アウトドア, 料理, 映画"
+                value={familyInfo.interests?.join(', ') || ''}
+                onChange={(e) =>
+                  setFamilyInfo((prev) => ({
+                    ...prev,
+                    interests: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                  }))
+                }
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* モデル選択 */}
         <Card>
           <CardHeader className="pb-2">
