@@ -23,8 +23,10 @@ export function DiaryList() {
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // 今日の日付を除外（TodayDiaryCardで表示するため）
-  const today = new Date().toISOString().split('T')[0]
-  const pastDiaries = diaries?.filter((d) => d.date !== today) || []
+  // ローカル時間で今日の日付を取得
+  const d = new Date()
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const pastDiaries = diaries?.filter((diary) => diary.date !== today) || []
 
   if (userLoading || isLoading) {
     return (
