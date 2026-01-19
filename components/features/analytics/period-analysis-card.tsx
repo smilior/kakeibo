@@ -29,7 +29,9 @@ export function PeriodAnalysisCard({
     regenerate.mutate({ periodType, periodStart })
   }
 
-  const periodLabel = periodType === 'week' ? '週間' : '月間'
+  const periodLabel = periodType === 'week' ? '先週の振り返り' : '先月の振り返り'
+  const displayAnalysis = regenerate.data || analysis
+  const hasNoData = !displayAnalysis
 
   return (
     <Card>
@@ -37,18 +39,20 @@ export function PeriodAnalysisCard({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <Lightbulb className="h-5 w-5 text-yellow-500" />
-            AI分析
+            {periodLabel}
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRegenerate}
-            disabled={regenerate.isPending || isLoading}
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${regenerate.isPending ? 'animate-spin' : ''}`}
-            />
-          </Button>
+          {!hasNoData && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={regenerate.isPending || isLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${regenerate.isPending ? 'animate-spin' : ''}`}
+              />
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -62,9 +66,13 @@ export function PeriodAnalysisCard({
           <p className="text-sm text-muted-foreground">
             分析を取得できませんでした
           </p>
+        ) : hasNoData ? (
+          <p className="text-sm text-muted-foreground">
+            {periodType === 'week' ? '先週' : '先月'}の支出データがないため、分析を生成できません
+          </p>
         ) : (
           <p className="text-sm leading-relaxed">
-            {regenerate.data || analysis}
+            {displayAnalysis}
           </p>
         )}
       </CardContent>

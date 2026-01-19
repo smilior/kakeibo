@@ -6,7 +6,7 @@ export const maxDuration = 60
 
 interface RequestBody {
   periodType: 'week' | 'month'
-  periodStart: string
+  periodStart: string  // 分析対象期間の開始日（先週/先月の開始日）
   force?: boolean
 }
 
@@ -55,18 +55,18 @@ export async function POST(request: Request) {
 
     const aiModel = household?.ai_model || 'gemini-3-flash-preview'
 
-    // 期間計算
-    const startDate = new Date(periodStart)
-    let endDate: Date
+    // 分析対象期間の計算（先週/先月）
+    const targetStart = new Date(periodStart)
+    let targetEnd: Date
 
     if (periodType === 'week') {
-      endDate = new Date(startDate)
-      endDate.setDate(endDate.getDate() + 6)
+      targetEnd = new Date(targetStart)
+      targetEnd.setDate(targetEnd.getDate() + 6)
     } else {
-      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0)
+      targetEnd = new Date(targetStart.getFullYear(), targetStart.getMonth() + 1, 0)
     }
 
-    const periodEnd = endDate.toISOString().split('T')[0]
+    const targetEndStr = targetEnd.toISOString().split('T')[0]
 
     // 既存の分析をチェック
     const { data: existingAnalysis } = await supabase
@@ -88,8 +88,8 @@ export async function POST(request: Request) {
         .eq('id', existingAnalysis.id)
     }
 
-    // 今期間の支出データを取得
-    const { data: currentExpenses } = await supabase
+    // 分析対象期間（先週/先月）の支出データを取得
+    const { data: targetExpenses } = await supabase
       .from('expenses')
       .select(`
         amount,
@@ -100,28 +100,36 @@ export async function POST(request: Request) {
       `)
       .eq('household_id', householdId)
       .gte('date', periodStart)
-      .lte('date', periodEnd)
+      .lte('date', targetEndStr)
 
-    // 前期間の計算
-    let prevStart: string
-    let prevEnd: string
-
-    if (periodType === 'week') {
-      const prev = new Date(startDate)
-      prev.setDate(prev.getDate() - 7)
-      prevStart = prev.toISOString().split('T')[0]
-      const prevEndDate = new Date(prev)
-      prevEndDate.setDate(prevEndDate.getDate() + 6)
-      prevEnd = prevEndDate.toISOString().split('T')[0]
-    } else {
-      const prev = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1)
-      prevStart = prev.toISOString().split('T')[0]
-      const prevEndDate = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
-      prevEnd = prevEndDate.toISOString().split('T')[0]
+    // データが空の場合は生成しない
+    if (!targetExpenses || targetExpenses.length === 0) {
+      return NextResponse.json({
+        analysis: null,
+        message: 'No data available for this period',
+      })
     }
 
-    // 前期間の支出データを取得
-    const { data: prevExpenses } = await supabase
+    // 比較期間（先々週/先々月）の計算
+    let compareStart: string
+    let compareEnd: string
+
+    if (periodType === 'week') {
+      const prev = new Date(targetStart)
+      prev.setDate(prev.getDate() - 7)
+      compareStart = prev.toISOString().split('T')[0]
+      const prevEndDate = new Date(prev)
+      prevEndDate.setDate(prevEndDate.getDate() + 6)
+      compareEnd = prevEndDate.toISOString().split('T')[0]
+    } else {
+      const prev = new Date(targetStart.getFullYear(), targetStart.getMonth() - 1, 1)
+      compareStart = prev.toISOString().split('T')[0]
+      const prevEndDate = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
+      compareEnd = prevEndDate.toISOString().split('T')[0]
+    }
+
+    // 比較期間の支出データを取得
+    const { data: compareExpenses } = await supabase
       .from('expenses')
       .select(`
         amount,
@@ -131,12 +139,12 @@ export async function POST(request: Request) {
         user:users(nickname)
       `)
       .eq('household_id', householdId)
-      .gte('date', prevStart)
-      .lte('date', prevEnd)
+      .gte('date', compareStart)
+      .lte('date', compareEnd)
 
     // カテゴリ別集計関数
     const aggregateByCategory = (
-      expenses: typeof currentExpenses
+      expenses: typeof targetExpenses
     ): Record<string, { amount: number; count: number }> => {
       const result: Record<string, { amount: number; count: number }> = {}
       expenses?.forEach((expense) => {
@@ -153,7 +161,7 @@ export async function POST(request: Request) {
 
     // ユーザー別集計関数
     const aggregateByUser = (
-      expenses: typeof currentExpenses
+      expenses: typeof targetExpenses
     ): Record<string, { amount: number; count: number }> => {
       const result: Record<string, { amount: number; count: number }> = {}
       expenses?.forEach((expense) => {
@@ -168,52 +176,51 @@ export async function POST(request: Request) {
       return result
     }
 
-    const currentTotal = currentExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0
-    const prevTotal = prevExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0
-    const currentCategoryTotals = aggregateByCategory(currentExpenses)
-    const prevCategoryTotals = aggregateByCategory(prevExpenses)
-    const currentUserTotals = aggregateByUser(currentExpenses)
+    const targetTotal = targetExpenses.reduce((sum, e) => sum + e.amount, 0)
+    const compareTotal = compareExpenses?.reduce((sum, e) => sum + e.amount, 0) || 0
+    const targetCategoryTotals = aggregateByCategory(targetExpenses)
+    const compareCategoryTotals = aggregateByCategory(compareExpenses || [])
+    const targetUserTotals = aggregateByUser(targetExpenses)
 
     // 増減計算
-    const diff = currentTotal - prevTotal
-    const diffPercent = prevTotal > 0 ? Math.round((diff / prevTotal) * 100) : 0
+    const diff = targetTotal - compareTotal
+    const diffPercent = compareTotal > 0 ? Math.round((diff / compareTotal) * 100) : 0
     const diffSign = diff >= 0 ? '+' : ''
 
     // カテゴリ別増減
-    const categoryChanges = Object.keys(currentCategoryTotals).map((name) => {
-      const current = currentCategoryTotals[name]?.amount || 0
-      const prev = prevCategoryTotals[name]?.amount || 0
-      const change = current - prev
-      const changePercent = prev > 0 ? Math.round((change / prev) * 100) : 0
-      return { name, current, prev, change, changePercent }
+    const categoryChanges = Object.keys(targetCategoryTotals).map((name) => {
+      const target = targetCategoryTotals[name]?.amount || 0
+      const compare = compareCategoryTotals[name]?.amount || 0
+      const change = target - compare
+      const changePercent = compare > 0 ? Math.round((change / compare) * 100) : 0
+      return { name, target, compare, change, changePercent }
     })
 
-    // 期間表示
-    const periodLabel = periodType === 'week' ? '週' : '月'
-    const prevPeriodLabel = periodType === 'week' ? '先週' : '先月'
-    const currentPeriodLabel = periodType === 'week' ? '今週' : '今月'
+    // 期間表示ラベル
+    const targetPeriodLabel = periodType === 'week' ? '先週' : '先月'
+    const comparePeriodLabel = periodType === 'week' ? '先々週' : '先々月'
 
     // プロンプト構築
     const prompt = `## 役割
-家計コーチとして、${currentPeriodLabel}と${prevPeriodLabel}の支出を比較分析してください。
+家計コーチとして、${targetPeriodLabel}の支出を振り返り分析してください。
 
 ## 出力ルール
 - 100〜200文字で簡潔に
 - 良かった点と改善点を1つずつ含める
 - 具体的な数字（金額、増減率）を含める
-- 前向きな締めくくり
+- 今週/今月に向けた前向きなアドバイスで締める
 
-## ${currentPeriodLabel}の支出データ
-- 合計: ¥${currentTotal.toLocaleString()}
-- ${prevPeriodLabel}比: ${diffSign}¥${Math.abs(diff).toLocaleString()} (${diffSign}${diffPercent}%)
+## ${targetPeriodLabel}の支出データ
+- 合計: ¥${targetTotal.toLocaleString()}
+- ${comparePeriodLabel}比: ${diffSign}¥${Math.abs(diff).toLocaleString()} (${diffSign}${diffPercent}%)
 
 ### カテゴリ別
-${Object.entries(currentCategoryTotals)
+${Object.entries(targetCategoryTotals)
   .sort((a, b) => b[1].amount - a[1].amount)
   .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()} (${data.count}回)`)
   .join('\n')}
 
-### カテゴリ別増減
+### カテゴリ別増減（${comparePeriodLabel}比）
 ${categoryChanges
   .filter((c) => c.change !== 0)
   .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
@@ -222,21 +229,21 @@ ${categoryChanges
     const sign = c.change >= 0 ? '+' : ''
     return `- ${c.name}: ${sign}¥${Math.abs(c.change).toLocaleString()} (${sign}${c.changePercent}%)`
   })
-  .join('\n')}
+  .join('\n') || '- 変動なし'}
 
-### ${prevPeriodLabel}の支出
-- 合計: ¥${prevTotal.toLocaleString()}
-${Object.entries(prevCategoryTotals)
+### ${comparePeriodLabel}の支出
+- 合計: ¥${compareTotal.toLocaleString()}
+${Object.entries(compareCategoryTotals)
   .sort((a, b) => b[1].amount - a[1].amount)
   .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()}`)
-  .join('\n')}
+  .join('\n') || '- データなし'}
 
-### ユーザー別（${currentPeriodLabel}）
-${Object.entries(currentUserTotals)
+### ユーザー別（${targetPeriodLabel}）
+${Object.entries(targetUserTotals)
   .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()} (${data.count}回)`)
   .join('\n')}
 
-上記データを踏まえ、100〜200文字で分析結果を出力してください。`
+上記データを踏まえ、${targetPeriodLabel}の振り返りとして100〜200文字で分析結果を出力してください。`
 
     // Gemini APIを呼び出し
     const ai = new GoogleGenAI({
@@ -253,14 +260,14 @@ ${Object.entries(currentUserTotals)
       ],
     })
 
-    const analysis = response.text?.trim() || `${currentPeriodLabel}の支出は¥${currentTotal.toLocaleString()}でした。`
+    const analysis = response.text?.trim() || `${targetPeriodLabel}の支出は¥${targetTotal.toLocaleString()}でした。`
 
     // DBに保存
     const { error: insertError } = await supabase.from('period_analyses').insert({
       household_id: householdId,
       period_type: periodType,
       period_start: periodStart,
-      period_end: periodEnd,
+      period_end: targetEndStr,
       analysis,
       prompt,
     })

@@ -248,6 +248,8 @@ export function useRegenerateAnalysis() {
 }
 
 // ログイン時に週別・月別分析を自動生成するフック
+// 週別: 先週のデータを分析（月曜以降に生成）
+// 月別: 先月のデータを分析（月初に生成）
 export function useAutoGenerateAnalysis(householdId: string | undefined) {
   const hasRunRef = useRef(false)
 
@@ -260,36 +262,38 @@ export function useAutoGenerateAnalysis(householdId: string | undefined) {
     const generateAnalyses = async () => {
       const now = new Date()
 
-      // 今週の開始日（月曜日）
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 })
-      const weekStartStr = format(weekStart, 'yyyy-MM-dd')
+      // 先週の開始日（月曜日）
+      const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 })
+      const lastWeekStart = subWeeks(thisWeekStart, 1)
+      const lastWeekStartStr = format(lastWeekStart, 'yyyy-MM-dd')
 
-      // 今月の開始日（1日）
-      const monthStart = startOfMonth(now)
-      const monthStartStr = format(monthStart, 'yyyy-MM-dd')
+      // 先月の開始日（1日）
+      const lastMonth = subMonths(now, 1)
+      const lastMonthStart = startOfMonth(lastMonth)
+      const lastMonthStartStr = format(lastMonthStart, 'yyyy-MM-dd')
 
-      // 週別分析を生成（存在しなければ）
+      // 週別分析を生成（先週のデータ）
       try {
         await fetch('/api/analytics/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             periodType: 'week',
-            periodStart: weekStartStr,
+            periodStart: lastWeekStartStr,
           }),
         })
       } catch (error) {
         console.error('Failed to generate weekly analysis:', error)
       }
 
-      // 月別分析を生成（存在しなければ）
+      // 月別分析を生成（先月のデータ）
       try {
         await fetch('/api/analytics/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             periodType: 'month',
-            periodStart: monthStartStr,
+            periodStart: lastMonthStartStr,
           }),
         })
       } catch (error) {
