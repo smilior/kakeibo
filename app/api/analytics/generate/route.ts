@@ -197,8 +197,8 @@ export async function POST(request: Request) {
     })
 
     // 期間表示ラベル
-    const targetPeriodLabel = periodType === 'week' ? '先週' : '先月'
-    const comparePeriodLabel = periodType === 'week' ? '先々週' : '先々月'
+    const targetPeriodLabel = periodType === 'week' ? 'この週' : 'この月'
+    const comparePeriodLabel = periodType === 'week' ? '前週' : '前月'
 
     // プロンプト構築
     const prompt = `## 役割

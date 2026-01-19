@@ -29,7 +29,7 @@ export function PeriodAnalysisCard({
     regenerate.mutate({ periodType, periodStart })
   }
 
-  const periodLabel = periodType === 'week' ? '先週の振り返り' : '先月の振り返り'
+  const periodLabel = periodType === 'week' ? '週間振り返り' : '月間振り返り'
   const displayAnalysis = regenerate.data || analysis
   const hasNoData = !displayAnalysis
 
@@ -68,7 +68,7 @@ export function PeriodAnalysisCard({
           </p>
         ) : hasNoData ? (
           <p className="text-sm text-muted-foreground">
-            {periodType === 'week' ? '先週' : '先月'}の支出データがないため、分析を生成できません
+            この期間の支出データがないため、分析を生成できません
           </p>
         ) : (
           <p className="text-sm leading-relaxed">

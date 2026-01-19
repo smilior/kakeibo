@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import {
   format,
   startOfWeek,
@@ -118,13 +118,8 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
       name: weekDays[index],
     }))
 
-  // AI分析用: 先週の開始日を計算
-  const lastWeekStart = useMemo(() => {
-    const today = new Date()
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 })
-    return subWeeks(thisWeekStart, 1)
-  }, [])
-  const analysisStartStr = format(lastWeekStart, 'yyyy-MM-dd')
+  // AI分析用: 表示中の週の開始日
+  const periodStartStr = format(weekStart, 'yyyy-MM-dd')
 
   return (
     <div className="space-y-4">
@@ -154,11 +149,11 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
         </div>
       ) : (
         <>
-          {/* AI分析（先週の振り返り） */}
+          {/* AI分析 */}
           <PeriodAnalysisCard
             householdId={householdId}
             periodType="week"
-            periodStart={analysisStartStr}
+            periodStart={periodStartStr}
           />
 
           {/* 先週比 */}
