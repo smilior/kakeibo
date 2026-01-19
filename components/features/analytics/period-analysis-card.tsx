@@ -29,7 +29,7 @@ export function PeriodAnalysisCard({
     regenerate.mutate({ periodType, periodStart })
   }
 
-  const periodLabel = periodType === 'week' ? '週間振り返り' : '月間振り返り'
+  const periodLabel = periodType === 'week' ? '先週の振り返り' : '先月の振り返り'
   const displayAnalysis = regenerate.data || analysis
   const hasNoData = !displayAnalysis
 

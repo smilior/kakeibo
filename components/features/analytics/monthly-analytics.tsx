@@ -2,6 +2,13 @@
 
 import { useState } from 'react'
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks, isSameMonth } from 'date-fns'
+
+// 先月の開始日を取得（振り返り用）
+const getLastMonthStart = () => {
+  const now = new Date()
+  const lastMonth = subMonths(now, 1)
+  return startOfMonth(lastMonth)
+}
 import { ja } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -121,8 +128,9 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
       amount: item.amount,
     }))
 
-  // AI分析用: 表示中の月の開始日
-  const periodStartStr = format(monthStart, 'yyyy-MM-dd')
+  // AI分析用: 常に先月の開始日（振り返りは完結した期間で行う）
+  const lastMonthStart = getLastMonthStart()
+  const periodStartStr = format(lastMonthStart, 'yyyy-MM-dd')
 
   return (
     <div className="space-y-4">

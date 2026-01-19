@@ -9,6 +9,13 @@ import {
   subWeeks,
   addDays,
 } from 'date-fns'
+
+// 先週の開始日を取得（振り返り用）
+const getLastWeekStart = () => {
+  const now = new Date()
+  const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 })
+  return subWeeks(thisWeekStart, 1)
+}
 import { ja } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -118,8 +125,9 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
       name: weekDays[index],
     }))
 
-  // AI分析用: 表示中の週の開始日
-  const periodStartStr = format(weekStart, 'yyyy-MM-dd')
+  // AI分析用: 常に先週の開始日（振り返りは完結した期間で行う）
+  const lastWeekStart = getLastWeekStart()
+  const periodStartStr = format(lastWeekStart, 'yyyy-MM-dd')
 
   return (
     <div className="space-y-4">
