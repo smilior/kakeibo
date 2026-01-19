@@ -12,9 +12,10 @@ interface AiDiary {
   created_at: string
 }
 
-// 今日の日付を取得
+// 今日の日付を取得（ローカル時間）
 function getTodayString(): string {
-  return new Date().toISOString().split('T')[0]
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // 今日の日記を取得・自動生成

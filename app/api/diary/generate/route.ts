@@ -123,13 +123,15 @@ export async function POST(request: Request) {
     const aiModel = household?.ai_model || 'gemini-3-flash-preview'
     const familyInfo = household?.family_info as FamilyInfo | null
 
-    const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
-    const dayOfWeek = today.getDay()
-    const dayName = today.toLocaleDateString('ja-JP', { weekday: 'long' })
-    const month = today.getMonth() + 1
+    // 日本時間で今日の日付を取得
+    const now = new Date()
+    const jstDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }))
+    const todayStr = `${jstDate.getFullYear()}-${String(jstDate.getMonth() + 1).padStart(2, '0')}-${String(jstDate.getDate()).padStart(2, '0')}`
+    const dayOfWeek = jstDate.getDay()
+    const dayName = jstDate.toLocaleDateString('ja-JP', { weekday: 'long' })
+    const month = jstDate.getMonth() + 1
     const { theme, instruction } = getDiaryTheme(dayOfWeek)
-    const { season, events } = getSeasonInfo(today.getMonth())
+    const { season, events } = getSeasonInfo(jstDate.getMonth())
 
     // 今日の日記が既に存在するかチェック
     const { data: existingDiary } = await supabase
@@ -154,9 +156,9 @@ export async function POST(request: Request) {
     const calculateAge = (birthDate: string): number => {
       if (!birthDate) return 0
       const birth = new Date(birthDate)
-      let age = today.getFullYear() - birth.getFullYear()
-      const monthDiff = today.getMonth() - birth.getMonth()
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      let age = jstDate.getFullYear() - birth.getFullYear()
+      const monthDiff = jstDate.getMonth() - birth.getMonth()
+      if (monthDiff < 0 || (monthDiff === 0 && jstDate.getDate() < birth.getDate())) {
         age--
       }
       return age
