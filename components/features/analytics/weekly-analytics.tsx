@@ -1,0 +1,205 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  addWeeks,
+  subWeeks,
+  addDays,
+} from 'date-fns'
+import { ja } from 'date-fns/locale'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useWeeklyExpenses } from '@/lib/queries/analytics'
+import { ComparisonSummary } from './comparison-summary'
+import { PeriodAnalysisCard } from './period-analysis-card'
+import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
+import { UserComparisonChart } from '@/components/features/dashboard/user-comparison-chart'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import type { Expense, Category, User } from '@/types/database'
+
+interface ExpenseWithRelations extends Expense {
+  category: Category | null
+  user: User | null
+}
+
+interface WeeklyAnalyticsProps {
+  householdId: string | undefined
+}
+
+export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
+  const [currentWeek, setCurrentWeek] = useState(new Date())
+
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
+  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
+
+  const { data, isLoading } = useWeeklyExpenses(householdId, currentWeek)
+
+  const handlePrevWeek = () => setCurrentWeek(subWeeks(currentWeek, 1))
+  const handleNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1))
+
+  // 今週の集計
+  const currentExpenses = (data?.current || []) as ExpenseWithRelations[]
+  const previousExpenses = (data?.previous || []) as ExpenseWithRelations[]
+
+  const currentTotal = currentExpenses.reduce((sum, e) => sum + e.amount, 0)
+  const previousTotal = previousExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+  // カテゴリ別集計
+  const categoryTotals = currentExpenses.reduce(
+    (acc, expense) => {
+      const categoryId = expense.category_id
+      if (!acc[categoryId]) {
+        acc[categoryId] = {
+          categoryId,
+          categoryName: expense.category?.name || '',
+          icon: expense.category?.icon || '',
+          amount: 0,
+        }
+      }
+      acc[categoryId].amount += expense.amount
+      return acc
+    },
+    {} as Record<string, { categoryId: string; categoryName: string; icon: string; amount: number }>
+  )
+
+  // ユーザー別集計
+  const userTotals = currentExpenses.reduce(
+    (acc, expense) => {
+      const userId = expense.user_id
+      if (!acc[userId]) {
+        acc[userId] = {
+          userId,
+          userName: expense.user?.name || '',
+          nickname: expense.user?.nickname,
+          amount: 0,
+        }
+      }
+      acc[userId].amount += expense.amount
+      return acc
+    },
+    {} as Record<string, { userId: string; userName: string; nickname?: string | null; amount: number }>
+  )
+
+  // 曜日別集計（月〜日の7日分を常に表示）
+  const weekDays = ['月', '火', '水', '木', '金', '土', '日']
+  const dailyTotals: Record<string, number> = {}
+
+  // 週の各日の金額を初期化
+  for (let i = 0; i < 7; i++) {
+    const date = format(addDays(weekStart, i), 'yyyy-MM-dd')
+    dailyTotals[date] = 0
+  }
+
+  // 支出を日付別に集計
+  currentExpenses.forEach((expense) => {
+    if (dailyTotals[expense.date] !== undefined) {
+      dailyTotals[expense.date] += expense.amount
+    }
+  })
+
+  // 曜日順でデータを作成
+  const dailyData = Object.entries(dailyTotals)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, amount], index) => ({
+      date,
+      amount,
+      name: weekDays[index],
+    }))
+
+  const periodStartStr = format(weekStart, 'yyyy-MM-dd')
+
+  return (
+    <div className="space-y-4">
+      {/* 週選択 */}
+      <Card>
+        <CardContent className="flex items-center justify-between p-4">
+          <Button variant="ghost" size="icon" onClick={handlePrevWeek}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="text-center">
+            <p className="font-semibold">
+              {format(weekStart, 'M/d(E)', { locale: ja })}〜{format(weekEnd, 'M/d(E)', { locale: ja })}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              合計: ¥{currentTotal.toLocaleString()}
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleNextWeek}>
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          {/* AI分析 */}
+          <PeriodAnalysisCard
+            householdId={householdId}
+            periodType="week"
+            periodStart={periodStartStr}
+          />
+
+          {/* 先週比 */}
+          <ComparisonSummary
+            currentTotal={currentTotal}
+            previousTotal={previousTotal}
+            currentLabel="今週"
+            previousLabel="先週"
+          />
+
+          {/* 日別推移 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">日別支出</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {dailyData.length > 0 ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" fontSize={10} />
+                      <YAxis fontSize={10} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip
+                        formatter={(value) => [`¥${Number(value).toLocaleString()}`, '支出']}
+                      />
+                      <Bar dataKey="amount" fill="#F97316" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  データがありません
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* カテゴリ別・ユーザー別 */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CategoryPieChart
+              data={Object.values(categoryTotals).sort((a, b) => b.amount - a.amount)}
+            />
+            <UserComparisonChart data={Object.values(userTotals)} />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/header'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { useAutoGenerateAnalysis } from '@/lib/queries/analytics'
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,9 @@ export default function DashboardLayout({
 }) {
   const { data: user, isLoading } = useUser()
   const router = useRouter()
+
+  // ログイン時に週別・月別分析を自動生成
+  useAutoGenerateAnalysis(user?.household_id ?? undefined)
 
   useEffect(() => {
     if (!isLoading && user && !user.household_id) {

@@ -306,6 +306,38 @@ export type Database = {
           created_at?: string
         }
       }
+      period_analyses: {
+        Row: {
+          id: string
+          household_id: string
+          period_type: 'week' | 'month'
+          period_start: string
+          period_end: string
+          analysis: string
+          prompt: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          period_type: 'week' | 'month'
+          period_start: string
+          period_end: string
+          analysis: string
+          prompt?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          period_type?: 'week' | 'month'
+          period_start?: string
+          period_end?: string
+          analysis?: string
+          prompt?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       monthly_expense_summary: {
@@ -381,3 +413,4 @@ export type Rule = Tables<'rules'>
 export type Expense = Tables<'expenses'>
 export type Subscription = Tables<'subscriptions'>
 export type AiDiary = Tables<'ai_diaries'>
+export type PeriodAnalysis = Tables<'period_analyses'>
