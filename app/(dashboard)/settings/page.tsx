@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Folder, Gauge, Home, MessageSquare, Sparkles } from 'lucide-react'
+import { ChevronRight, CreditCard, Folder, Gauge, Home, MessageSquare, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
 const settingsItems = [
@@ -16,6 +16,12 @@ const settingsItems = [
     icon: Gauge,
     label: 'ルール設定',
     description: '回数制限の設定',
+  },
+  {
+    href: '/subscriptions',
+    icon: CreditCard,
+    label: 'サブスク管理',
+    description: '定期契約の管理',
   },
   {
     href: '/settings/household',

@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Home, PenSquare, BarChart3, CreditCard, Settings } from 'lucide-react'
+import { Home, PenSquare, BarChart3, BookOpen, Settings } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'ホーム', icon: Home },
   { href: '/expenses/new', label: '入力', icon: PenSquare },
   { href: '/analytics', label: '分析', icon: BarChart3 },
-  { href: '/subscriptions', label: 'サブスク', icon: CreditCard },
+  { href: '/diary', label: 'AI日記', icon: BookOpen },
   { href: '/settings', label: '設定', icon: Settings },
 ]
 

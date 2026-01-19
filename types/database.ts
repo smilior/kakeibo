@@ -277,6 +277,35 @@ export type Database = {
           updated_at?: string
         }
       }
+      ai_diaries: {
+        Row: {
+          id: string
+          household_id: string
+          date: string
+          content: string
+          prompt: string | null
+          theme: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          date: string
+          content: string
+          prompt?: string | null
+          theme?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          date?: string
+          content?: string
+          prompt?: string | null
+          theme?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       monthly_expense_summary: {
@@ -351,3 +380,4 @@ export type Category = Tables<'categories'>
 export type Rule = Tables<'rules'>
 export type Expense = Tables<'expenses'>
 export type Subscription = Tables<'subscriptions'>
+export type AiDiary = Tables<'ai_diaries'>
