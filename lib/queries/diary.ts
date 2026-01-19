@@ -12,12 +12,20 @@ interface AiDiary {
   created_at: string
 }
 
+// 今日の日付を取得
+function getTodayString(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
 // 今日の日記を取得・自動生成
 export function useTodayDiary(householdId: string | undefined) {
   const queryClient = useQueryClient()
-  const hasTriggeredGeneration = useRef(false)
+  // 最後に生成をトリガーした日付を記録（日付が変わったらリセット）
+  const lastTriggeredDateRef = useRef<string | null>(null)
   const isMountedRef = useRef(true)
   const [isRegenerating, setIsRegenerating] = useState(false)
+  // 日付の状態を管理（日付変更を検知するため）
+  const [today, setToday] = useState(getTodayString)
 
   // コンポーネントのマウント状態を追跡
   useEffect(() => {
@@ -27,7 +35,28 @@ export function useTodayDiary(householdId: string | undefined) {
     }
   }, [])
 
-  const today = new Date().toISOString().split('T')[0]
+  // 日付変更を定期的にチェック（1分ごと）
+  useEffect(() => {
+    const checkDateChange = () => {
+      const currentDate = getTodayString()
+      if (currentDate !== today) {
+        console.log('Date changed:', today, '->', currentDate)
+        setToday(currentDate)
+        // 日付が変わったらトリガーフラグをリセット
+        lastTriggeredDateRef.current = null
+        // クエリを無効化して再フェッチ
+        queryClient.invalidateQueries({
+          queryKey: ['ai-diary', householdId],
+        })
+        queryClient.invalidateQueries({
+          queryKey: ['ai-diaries', householdId],
+        })
+      }
+    }
+
+    const interval = setInterval(checkDateChange, 60000) // 1分ごとにチェック
+    return () => clearInterval(interval)
+  }, [today, householdId, queryClient])
 
   const query = useQuery({
     queryKey: ['ai-diary', householdId, today],
@@ -65,14 +94,14 @@ export function useTodayDiary(householdId: string | undefined) {
       return
     }
 
-    // 既にトリガー済みならスキップ
-    if (hasTriggeredGeneration.current) {
+    // 今日分が既にトリガー済みならスキップ
+    if (lastTriggeredDateRef.current === today) {
       return
     }
 
-    // 1度だけ生成をトリガー
-    hasTriggeredGeneration.current = true
-    console.log('Triggering diary generation...')
+    // 今日の生成をトリガー
+    lastTriggeredDateRef.current = today
+    console.log('Triggering diary generation for:', today)
 
     // 非同期でAPIを呼び出し
     fetch('/api/diary/generate', {
