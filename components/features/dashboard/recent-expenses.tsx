@@ -49,7 +49,10 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
             month: 'numeric',
             day: 'numeric',
           })
-          const displayName = expense.user?.nickname || expense.user?.name || ''
+          // 家族支出の場合は「家族」と表示
+          const displayName = expense.is_family
+            ? '家族'
+            : (expense.user?.nickname || expense.user?.name || '')
 
           return (
             <div

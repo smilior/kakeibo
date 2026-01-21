@@ -81,22 +81,34 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
     {} as Record<string, { categoryId: string; categoryName: string; icon: string; amount: number }>
   )
 
-  // ユーザー別集計
+  // ユーザー別集計（家族支出は「家族」として集計）
   const userTotals = currentExpenses.reduce(
     (acc, expense) => {
-      const userId = expense.user_id
-      if (!acc[userId]) {
-        acc[userId] = {
-          userId,
-          userName: expense.user?.name || '',
-          nickname: expense.user?.nickname,
-          amount: 0,
+      // is_family が true の場合は「家族」として集計
+      const key = expense.is_family ? 'family' : expense.user_id
+      if (!acc[key]) {
+        if (expense.is_family) {
+          acc[key] = {
+            userId: 'family',
+            userName: '家族',
+            nickname: '家族',
+            amount: 0,
+            isFamily: true,
+          }
+        } else {
+          acc[key] = {
+            userId: expense.user_id,
+            userName: expense.user?.name || '',
+            nickname: expense.user?.nickname,
+            amount: 0,
+            isFamily: false,
+          }
         }
       }
-      acc[userId].amount += expense.amount
+      acc[key].amount += expense.amount
       return acc
     },
-    {} as Record<string, { userId: string; userName: string; nickname?: string | null; amount: number }>
+    {} as Record<string, { userId: string; userName: string; nickname?: string | null; amount: number; isFamily?: boolean }>
   )
 
   // 曜日別集計（月〜日の7日分を常に表示）
