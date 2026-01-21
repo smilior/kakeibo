@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 
 interface CategoryTotal {
@@ -29,6 +31,7 @@ const COLORS = [
 ]
 
 export function CategoryPieChart({ data }: CategoryPieChartProps) {
+  const [showAmount, setShowAmount] = useState(false)
   const total = data.reduce((sum, item) => sum + item.amount, 0)
 
   if (data.length === 0) {
@@ -55,8 +58,16 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">カテゴリ別内訳</CardTitle>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => setShowAmount(!showAmount)}
+        >
+          {showAmount ? '¥' : '%'}
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-4">
@@ -95,7 +106,9 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
                 <span className="flex-1">
                   {item.icon} {item.name}
                 </span>
-                <span className="text-muted-foreground">{item.percentage}%</span>
+                <span className="text-muted-foreground">
+                  {showAmount ? `¥${item.value.toLocaleString()}` : `${item.percentage}%`}
+                </span>
               </div>
             ))}
           </div>
