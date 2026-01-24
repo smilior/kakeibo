@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useMonthlyComparison } from '@/lib/queries/analytics'
 import { ComparisonSummary } from './comparison-summary'
 import { PeriodAnalysisCard } from './period-analysis-card'
+import { ExpenseDetailSheet } from './expense-detail-sheet'
 import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
 import { UserComparisonChart } from '@/components/features/dashboard/user-comparison-chart'
 import {
@@ -20,6 +21,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 import type { Expense, Category, User } from '@/types/database'
 
@@ -34,6 +36,9 @@ interface MonthlyAnalyticsProps {
 
 export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetTitle, setSheetTitle] = useState('')
+  const [sheetExpenses, setSheetExpenses] = useState<ExpenseWithRelations[]>([])
 
   const { data, isLoading } = useMonthlyComparison(householdId, currentMonth)
 
@@ -99,18 +104,17 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
   const periodStart = data?.currentStart ? new Date(data.currentStart) : startOfMonth(currentMonth)
   const periodEnd = data?.currentEnd ? new Date(data.currentEnd) : endOfMonth(currentMonth)
 
-  const weeklyTotals: { week: number; label: string; amount: number }[] = []
+  const weeklyTotals: { week: number; label: string; amount: number; expenses: ExpenseWithRelations[] }[] = []
   let weekNum = 1
   let weekStart = startOfWeek(periodStart, { weekStartsOn: 1 })
 
   while (weekStart <= periodEnd) {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
-    const weekAmount = currentExpenses
-      .filter((e) => {
-        const expenseDate = new Date(e.date)
-        return expenseDate >= weekStart && expenseDate <= weekEnd && expenseDate >= periodStart && expenseDate <= periodEnd
-      })
-      .reduce((sum, e) => sum + e.amount, 0)
+    const weekExpenses = currentExpenses.filter((e) => {
+      const expenseDate = new Date(e.date)
+      return expenseDate >= weekStart && expenseDate <= weekEnd && expenseDate >= periodStart && expenseDate <= periodEnd
+    })
+    const weekAmount = weekExpenses.reduce((sum, e) => sum + e.amount, 0)
 
     // 期間内に含まれる週のみ追加
     if (weekStart <= periodEnd && weekEnd >= periodStart) {
@@ -118,13 +122,14 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
         week: weekNum,
         label: `第${weekNum}週`,
         amount: weekAmount,
+        expenses: weekExpenses,
       })
       weekNum++
     }
     weekStart = addWeeks(weekStart, 1)
   }
 
-  // カテゴリ別棒グラフ用データ
+  // カテゴリ別棒グラフ用データ（支出も含める）
   const categoryBarData = Object.values(categoryTotals)
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 6)
@@ -132,10 +137,42 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
       name: item.categoryName,
       icon: item.icon,
       amount: item.amount,
+      categoryId: item.categoryId,
+      expenses: currentExpenses.filter((e) => e.category_id === item.categoryId),
     }))
 
   // AI分析用: 先月の締め日ベースの開始日（振り返りは完結した期間で行う）
   const periodStartStr = data?.previousStart || ''
+
+  // 週別グラフクリック時のハンドラ
+  const handleWeekClick = (_: unknown, index: number) => {
+    const weekData = weeklyTotals[index]
+    if (weekData) {
+      setSheetTitle(`${weekData.label}の支出`)
+      setSheetExpenses(weekData.expenses)
+      setSheetOpen(true)
+    }
+  }
+
+  // カテゴリ別グラフクリック時のハンドラ
+  const handleCategoryClick = (_: unknown, index: number) => {
+    const catData = categoryBarData[index]
+    if (catData) {
+      setSheetTitle(`${catData.name}の支出`)
+      setSheetExpenses(catData.expenses)
+      setSheetOpen(true)
+    }
+  }
+
+  // ユーザー別クリック時のハンドラ
+  const handleUserClick = (userId: string, label: string) => {
+    const filtered = currentExpenses.filter((e) =>
+      userId === 'family' ? e.is_family : e.user_id === userId
+    )
+    setSheetTitle(`${label}の支出`)
+    setSheetExpenses(filtered)
+    setSheetOpen(true)
+  }
 
   return (
     <div className="space-y-4">
@@ -198,14 +235,23 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
               {weeklyTotals.length > 0 ? (
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyTotals}>
+                    <BarChart data={weeklyTotals} className="cursor-pointer">
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="label" fontSize={10} />
                       <YAxis fontSize={10} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
                       <Tooltip
                         formatter={(value) => [`¥${Number(value).toLocaleString()}`, '支出']}
                       />
-                      <Bar dataKey="amount" fill="#F97316" radius={[4, 4, 0, 0]} />
+                      <Bar
+                        dataKey="amount"
+                        fill="#F97316"
+                        radius={[4, 4, 0, 0]}
+                        onClick={(data, index) => handleWeekClick(data, index)}
+                      >
+                        {weeklyTotals.map((entry, index) => (
+                          <Cell key={`cell-${index}`} className="hover:opacity-80 transition-opacity" />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -226,14 +272,23 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
               {categoryBarData.length > 0 ? (
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={categoryBarData} layout="vertical">
+                    <BarChart data={categoryBarData} layout="vertical" className="cursor-pointer">
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" fontSize={10} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
                       <YAxis type="category" dataKey="name" fontSize={10} width={80} />
                       <Tooltip
                         formatter={(value) => [`¥${Number(value).toLocaleString()}`, '支出']}
                       />
-                      <Bar dataKey="amount" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                      <Bar
+                        dataKey="amount"
+                        fill="#3B82F6"
+                        radius={[0, 4, 4, 0]}
+                        onClick={(data, index) => handleCategoryClick(data, index)}
+                      >
+                        {categoryBarData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} className="hover:opacity-80 transition-opacity" />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -250,7 +305,10 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
             <CategoryPieChart
               data={Object.values(categoryTotals).sort((a, b) => b.amount - a.amount)}
             />
-            <UserComparisonChart data={Object.values(userTotals)} />
+            <UserComparisonChart
+              data={Object.values(userTotals)}
+              onUserClick={handleUserClick}
+            />
           </div>
 
           {/* カテゴリ別詳細 */}
@@ -263,7 +321,16 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
                 {Object.values(categoryTotals)
                   .sort((a, b) => b.amount - a.amount)
                   .map((item) => (
-                    <div key={item.categoryId} className="flex items-center gap-3">
+                    <div
+                      key={item.categoryId}
+                      className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-md p-1 -m-1 transition-colors"
+                      onClick={() => {
+                        const filtered = currentExpenses.filter((e) => e.category_id === item.categoryId)
+                        setSheetTitle(`${item.categoryName}の支出`)
+                        setSheetExpenses(filtered)
+                        setSheetOpen(true)
+                      }}
+                    >
                       <span className="text-lg">{item.icon}</span>
                       <span className="flex-1">{item.categoryName}</span>
                       <span className="font-medium">
@@ -276,6 +343,14 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
           </Card>
         </>
       )}
+
+      {/* 支出詳細シート */}
+      <ExpenseDetailSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={sheetTitle}
+        expenses={sheetExpenses}
+      />
     </div>
   )
 }

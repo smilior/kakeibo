@@ -14,13 +14,14 @@ interface UserTotal {
 
 interface UserComparisonChartProps {
   data: UserTotal[]
+  onUserClick?: (userId: string, label: string) => void
 }
 
 const COLORS = ['#F97316', '#3B82F6', '#A855F7']
 const FAMILY_COLOR = '#22C55E'
 const SUBSCRIPTION_COLOR = '#8B5CF6'
 
-export function UserComparisonChart({ data }: UserComparisonChartProps) {
+export function UserComparisonChart({ data, onUserClick }: UserComparisonChartProps) {
   const total = data.reduce((sum, item) => sum + item.amount, 0)
 
   if (data.length === 0) {
@@ -57,13 +58,18 @@ export function UserComparisonChart({ data }: UserComparisonChartProps) {
               : user.isFamily
                 ? '👨‍👩‍👧 家族'
                 : (user.nickname || user.userName)
+            const isClickable = onUserClick && !user.isSubscription
             return (
-              <div key={user.userId} className="text-center">
+              <div
+                key={user.userId}
+                className={`text-center ${isClickable ? 'cursor-pointer' : ''}`}
+                onClick={() => isClickable && onUserClick(user.userId, label)}
+              >
                 <p className="text-sm text-muted-foreground">
                   {label}
                 </p>
                 <div
-                  className="mx-auto my-2 flex h-16 w-16 items-center justify-center rounded-full text-white"
+                  className={`mx-auto my-2 flex h-16 w-16 items-center justify-center rounded-full text-white ${isClickable ? 'hover:opacity-80 transition-opacity' : ''}`}
                   style={{ backgroundColor: color }}
                 >
                   <span className="font-bold">{percentage.toFixed(0)}%</span>

@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useWeeklyExpenses } from '@/lib/queries/analytics'
 import { ComparisonSummary } from './comparison-summary'
 import { PeriodAnalysisCard } from './period-analysis-card'
+import { ExpenseDetailSheet } from './expense-detail-sheet'
 import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
 import { UserComparisonChart } from '@/components/features/dashboard/user-comparison-chart'
 import {
@@ -33,6 +34,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 import type { Expense, Category, User } from '@/types/database'
 
@@ -47,6 +49,9 @@ interface WeeklyAnalyticsProps {
 
 export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
   const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetTitle, setSheetTitle] = useState('')
+  const [sheetExpenses, setSheetExpenses] = useState<ExpenseWithRelations[]>([])
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
@@ -141,6 +146,28 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
   const lastWeekStart = getLastWeekStart()
   const periodStartStr = format(lastWeekStart, 'yyyy-MM-dd')
 
+  // 日別グラフクリック時のハンドラ
+  const handleDayClick = (_: unknown, index: number) => {
+    const dayData = dailyData[index]
+    if (dayData) {
+      const filtered = currentExpenses.filter((e) => e.date === dayData.date)
+      const dateLabel = format(new Date(dayData.date), 'M月d日（E）', { locale: ja })
+      setSheetTitle(`${dateLabel}の支出`)
+      setSheetExpenses(filtered)
+      setSheetOpen(true)
+    }
+  }
+
+  // ユーザー別クリック時のハンドラ
+  const handleUserClick = (userId: string, label: string) => {
+    const filtered = currentExpenses.filter((e) =>
+      userId === 'family' ? e.is_family : e.user_id === userId
+    )
+    setSheetTitle(`${label}の支出`)
+    setSheetExpenses(filtered)
+    setSheetOpen(true)
+  }
+
   return (
     <div className="space-y-4">
       {/* 週選択 */}
@@ -196,14 +223,23 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
               {dailyData.length > 0 ? (
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailyData}>
+                    <BarChart data={dailyData} className="cursor-pointer">
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" fontSize={10} />
                       <YAxis fontSize={10} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
                       <Tooltip
                         formatter={(value) => [`¥${Number(value).toLocaleString()}`, '支出']}
                       />
-                      <Bar dataKey="amount" fill="#F97316" radius={[4, 4, 0, 0]} />
+                      <Bar
+                        dataKey="amount"
+                        fill="#F97316"
+                        radius={[4, 4, 0, 0]}
+                        onClick={(data, index) => handleDayClick(data, index)}
+                      >
+                        {dailyData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} className="hover:opacity-80 transition-opacity" />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -220,10 +256,21 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
             <CategoryPieChart
               data={Object.values(categoryTotals).sort((a, b) => b.amount - a.amount)}
             />
-            <UserComparisonChart data={Object.values(userTotals)} />
+            <UserComparisonChart
+              data={Object.values(userTotals)}
+              onUserClick={handleUserClick}
+            />
           </div>
         </>
       )}
+
+      {/* 支出詳細シート */}
+      <ExpenseDetailSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={sheetTitle}
+        expenses={sheetExpenses}
+      />
     </div>
   )
 }
