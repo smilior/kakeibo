@@ -60,6 +60,9 @@ export function YearlyAnalytics({ householdId }: YearlyAnalyticsProps) {
                   <p className="text-xl font-bold">¥{monthAverage.toLocaleString()}</p>
                 </div>
               </div>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                ※サブスクは含まれません
+              </p>
             </CardContent>
           </Card>
 
