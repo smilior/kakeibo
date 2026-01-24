@@ -380,6 +380,10 @@ export type Database = {
         Args: { p_household_id: string }
         Returns: { start_date: string; end_date: string }[]
       }
+      get_period_for_date: {
+        Args: { p_household_id: string; p_target_date: string }
+        Returns: { start_date: string; end_date: string }[]
+      }
       get_remaining_counts: {
         Args: { p_household_id: string }
         Returns: {

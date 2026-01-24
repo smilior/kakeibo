@@ -73,7 +73,7 @@ export function useWeeklyExpenses(householdId: string | undefined, weekStart: Da
   })
 }
 
-// 月別比較データ取得
+// 月別比較データ取得（締め日対応）
 export function useMonthlyComparison(householdId: string | undefined, month: Date) {
   return useQuery({
     queryKey: ['analytics', 'monthly', householdId, month.toISOString()],
@@ -82,14 +82,36 @@ export function useMonthlyComparison(householdId: string | undefined, month: Dat
 
       const supabase = createClient()
 
-      // 今月の期間
-      const currentStart = startOfMonth(month)
-      const currentEnd = endOfMonth(month)
+      // 今月の締め日ベース期間を取得
+      const targetDate = new Date(month.getFullYear(), month.getMonth(), 15)
+      const { data: currentPeriod, error: currentPeriodError } = await supabase.rpc(
+        'get_period_for_date',
+        {
+          p_household_id: householdId,
+          p_target_date: format(targetDate, 'yyyy-MM-dd'),
+        }
+      )
 
-      // 先月の期間
-      const prevMonth = subMonths(month, 1)
-      const prevStart = startOfMonth(prevMonth)
-      const prevEnd = endOfMonth(prevMonth)
+      if (currentPeriodError) throw currentPeriodError
+
+      const current_period = currentPeriod?.[0]
+      if (!current_period) {
+        return { current: [], previous: [] }
+      }
+
+      // 先月の締め日ベース期間を取得
+      const prevTargetDate = subMonths(targetDate, 1)
+      const { data: prevPeriod, error: prevPeriodError } = await supabase.rpc(
+        'get_period_for_date',
+        {
+          p_household_id: householdId,
+          p_target_date: format(prevTargetDate, 'yyyy-MM-dd'),
+        }
+      )
+
+      if (prevPeriodError) throw prevPeriodError
+
+      const previous_period = prevPeriod?.[0]
 
       // 今月の支出
       const { data: current, error: currentError } = await supabase
@@ -100,41 +122,45 @@ export function useMonthlyComparison(householdId: string | undefined, month: Dat
           user:users(id, name, nickname, avatar_url)
         `)
         .eq('household_id', householdId)
-        .gte('date', format(currentStart, 'yyyy-MM-dd'))
-        .lte('date', format(currentEnd, 'yyyy-MM-dd'))
+        .gte('date', current_period.start_date)
+        .lte('date', current_period.end_date)
         .order('date', { ascending: true })
 
       if (currentError) throw currentError
 
       // 先月の支出
-      const { data: previous, error: prevError } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          category:categories(id, name, icon),
-          user:users(id, name, nickname, avatar_url)
-        `)
-        .eq('household_id', householdId)
-        .gte('date', format(prevStart, 'yyyy-MM-dd'))
-        .lte('date', format(prevEnd, 'yyyy-MM-dd'))
-        .order('date', { ascending: true })
+      let previous: typeof current = []
+      if (previous_period) {
+        const { data: prevData, error: prevError } = await supabase
+          .from('expenses')
+          .select(`
+            *,
+            category:categories(id, name, icon),
+            user:users(id, name, nickname, avatar_url)
+          `)
+          .eq('household_id', householdId)
+          .gte('date', previous_period.start_date)
+          .lte('date', previous_period.end_date)
+          .order('date', { ascending: true })
 
-      if (prevError) throw prevError
+        if (prevError) throw prevError
+        previous = prevData || []
+      }
 
       return {
         current: current || [],
-        previous: previous || [],
-        currentStart: format(currentStart, 'yyyy-MM-dd'),
-        currentEnd: format(currentEnd, 'yyyy-MM-dd'),
-        previousStart: format(prevStart, 'yyyy-MM-dd'),
-        previousEnd: format(prevEnd, 'yyyy-MM-dd'),
+        previous: previous,
+        currentStart: current_period.start_date,
+        currentEnd: current_period.end_date,
+        previousStart: previous_period?.start_date || '',
+        previousEnd: previous_period?.end_date || '',
       }
     },
     enabled: !!householdId,
   })
 }
 
-// 年別支出データ取得
+// 年別支出データ取得（締め日対応）
 export function useYearlyExpenses(householdId: string | undefined, year: number) {
   return useQuery({
     queryKey: ['analytics', 'yearly', householdId, year],
@@ -143,8 +169,35 @@ export function useYearlyExpenses(householdId: string | undefined, year: number)
 
       const supabase = createClient()
 
-      const yearStart = new Date(year, 0, 1)
-      const yearEnd = new Date(year, 11, 31)
+      // 12ヶ月分の締め日ベース期間を取得
+      const periods: { month: number; startDate: string; endDate: string }[] = []
+      for (let i = 0; i < 12; i++) {
+        const targetDate = new Date(year, i, 15) // 各月の中日
+        const { data: periodData, error: periodError } = await supabase.rpc(
+          'get_period_for_date',
+          {
+            p_household_id: householdId,
+            p_target_date: format(targetDate, 'yyyy-MM-dd'),
+          }
+        )
+
+        if (periodError) throw periodError
+
+        const period = periodData?.[0]
+        if (period) {
+          periods.push({
+            month: i,
+            startDate: period.start_date,
+            endDate: period.end_date,
+          })
+        }
+      }
+
+      // 全期間をカバーする日付範囲で支出を取得
+      const allStartDates = periods.map((p) => p.startDate)
+      const allEndDates = periods.map((p) => p.endDate)
+      const minDate = allStartDates.sort()[0]
+      const maxDate = allEndDates.sort().reverse()[0]
 
       const { data, error } = await supabase
         .from('expenses')
@@ -155,21 +208,27 @@ export function useYearlyExpenses(householdId: string | undefined, year: number)
           user:users(id, name, nickname)
         `)
         .eq('household_id', householdId)
-        .gte('date', format(yearStart, 'yyyy-MM-dd'))
-        .lte('date', format(yearEnd, 'yyyy-MM-dd'))
+        .gte('date', minDate)
+        .lte('date', maxDate)
         .order('date', { ascending: true })
 
       if (error) throw error
 
-      // 月別に集計
+      // 各支出がどの期間に属するか判定して集計
       const monthlyTotals: Record<number, number> = {}
       for (let i = 0; i < 12; i++) {
         monthlyTotals[i] = 0
       }
 
       data?.forEach((expense) => {
-        const expenseMonth = new Date(expense.date).getMonth()
-        monthlyTotals[expenseMonth] += expense.amount
+        const expenseDate = expense.date
+        // どの期間に属するか判定
+        const matchingPeriod = periods.find(
+          (p) => expenseDate >= p.startDate && expenseDate <= p.endDate
+        )
+        if (matchingPeriod) {
+          monthlyTotals[matchingPeriod.month] += expense.amount
+        }
       })
 
       return Object.entries(monthlyTotals).map(([month, amount]) => ({
@@ -249,7 +308,7 @@ export function useRegenerateAnalysis() {
 
 // ログイン時に週別・月別分析を自動生成するフック
 // 週別: 先週のデータを分析（月曜以降に生成）
-// 月別: 先月のデータを分析（月初に生成）
+// 月別: 先月のデータを分析（締め日ベース）
 export function useAutoGenerateAnalysis(householdId: string | undefined) {
   const hasRunRef = useRef(false)
 
@@ -261,16 +320,25 @@ export function useAutoGenerateAnalysis(householdId: string | undefined) {
 
     const generateAnalyses = async () => {
       const now = new Date()
+      const supabase = createClient()
 
-      // 先週の開始日（月曜日）
+      // 先週の開始日（月曜日）- 週別は暦週のまま
       const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 })
       const lastWeekStart = subWeeks(thisWeekStart, 1)
       const lastWeekStartStr = format(lastWeekStart, 'yyyy-MM-dd')
 
-      // 先月の開始日（1日）
-      const lastMonth = subMonths(now, 1)
-      const lastMonthStart = startOfMonth(lastMonth)
-      const lastMonthStartStr = format(lastMonthStart, 'yyyy-MM-dd')
+      // 先月の締め日ベース期間を取得
+      const lastMonthTarget = subMonths(now, 1)
+      const { data: lastPeriodData } = await supabase.rpc(
+        'get_period_for_date',
+        {
+          p_household_id: householdId,
+          p_target_date: format(new Date(lastMonthTarget.getFullYear(), lastMonthTarget.getMonth(), 15), 'yyyy-MM-dd'),
+        }
+      )
+
+      const lastPeriod = lastPeriodData?.[0]
+      const lastMonthStartStr = lastPeriod?.start_date || format(startOfMonth(lastMonthTarget), 'yyyy-MM-dd')
 
       // 週別分析を生成（先週のデータ）
       try {
@@ -286,7 +354,7 @@ export function useAutoGenerateAnalysis(householdId: string | undefined) {
         console.error('Failed to generate weekly analysis:', error)
       }
 
-      // 月別分析を生成（先月のデータ）
+      // 月別分析を生成（先月のデータ - 締め日ベース）
       try {
         await fetch('/api/analytics/generate', {
           method: 'POST',

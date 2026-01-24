@@ -22,10 +22,12 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<ExpenseWithRelations | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const { data: user } = useUser()
-  const { data: expenses = [], isLoading } = useExpenses(
+  const { data, isLoading } = useExpenses(
     user?.household_id ?? undefined,
     currentMonth
   )
+  const expenses = data?.expenses ?? []
+  const period = data?.period
   const deleteExpense = useDeleteExpense()
 
   const handleEdit = (expense: ExpenseWithRelations) => {
@@ -81,6 +83,12 @@ export default function ExpensesPage() {
             <p className="font-semibold">
               {format(currentMonth, 'yyyy年M月', { locale: ja })}
             </p>
+            {period && (
+              <p className="text-xs text-muted-foreground">
+                {format(new Date(period.startDate), 'M/d', { locale: ja })} 〜{' '}
+                {format(new Date(period.endDate), 'M/d', { locale: ja })}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               合計: ¥{totalAmount.toLocaleString()} ({expenses.length}件)
             </p>

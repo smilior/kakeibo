@@ -57,16 +57,24 @@ export async function POST(request: Request) {
 
     // 分析対象期間の計算（先週/先月）
     const targetStart = new Date(periodStart)
-    let targetEnd: Date
+    let targetEndStr: string
 
     if (periodType === 'week') {
-      targetEnd = new Date(targetStart)
+      const targetEnd = new Date(targetStart)
       targetEnd.setDate(targetEnd.getDate() + 6)
+      targetEndStr = targetEnd.toISOString().split('T')[0]
     } else {
-      targetEnd = new Date(targetStart.getFullYear(), targetStart.getMonth() + 1, 0)
+      // 月別の場合は締め日ベースの期間終了日を取得
+      const { data: periodData } = await supabase.rpc(
+        'get_period_for_date',
+        {
+          p_household_id: householdId,
+          p_target_date: periodStart,
+        }
+      )
+      const period = periodData?.[0]
+      targetEndStr = period?.end_date || new Date(targetStart.getFullYear(), targetStart.getMonth() + 1, 0).toISOString().split('T')[0]
     }
-
-    const targetEndStr = targetEnd.toISOString().split('T')[0]
 
     // 既存の分析をチェック
     const { data: existingAnalysis } = await supabase
@@ -122,10 +130,26 @@ export async function POST(request: Request) {
       prevEndDate.setDate(prevEndDate.getDate() + 6)
       compareEnd = prevEndDate.toISOString().split('T')[0]
     } else {
-      const prev = new Date(targetStart.getFullYear(), targetStart.getMonth() - 1, 1)
-      compareStart = prev.toISOString().split('T')[0]
-      const prevEndDate = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
-      compareEnd = prevEndDate.toISOString().split('T')[0]
+      // 月別の場合は先々月の締め日ベース期間を取得
+      const prevTargetDate = new Date(targetStart)
+      prevTargetDate.setMonth(prevTargetDate.getMonth() - 1)
+      const { data: prevPeriodData } = await supabase.rpc(
+        'get_period_for_date',
+        {
+          p_household_id: householdId,
+          p_target_date: prevTargetDate.toISOString().split('T')[0],
+        }
+      )
+      const prevPeriod = prevPeriodData?.[0]
+      if (prevPeriod) {
+        compareStart = prevPeriod.start_date
+        compareEnd = prevPeriod.end_date
+      } else {
+        const prev = new Date(targetStart.getFullYear(), targetStart.getMonth() - 1, 1)
+        compareStart = prev.toISOString().split('T')[0]
+        const prevEndDate = new Date(prev.getFullYear(), prev.getMonth() + 1, 0)
+        compareEnd = prevEndDate.toISOString().split('T')[0]
+      }
     }
 
     // 比較期間の支出データを取得

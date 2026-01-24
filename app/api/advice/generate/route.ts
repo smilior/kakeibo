@@ -84,11 +84,21 @@ export async function POST(request: Request) {
       }
     }
 
-    // 今月の支出データを取得
-    const startOfMonth = new Date()
-    startOfMonth.setDate(1)
-    const startDate = startOfMonth.toISOString().split('T')[0]
+    // 締め日に基づく計測期間を取得
+    const { data: periodData, error: periodError } = await supabase.rpc(
+      'get_current_period',
+      { p_household_id: householdId }
+    )
 
+    if (periodError) {
+      console.error('Failed to fetch period:', periodError)
+    }
+
+    const period = periodData?.[0]
+    const periodStartDate = period?.start_date || new Date().toISOString().split('T')[0]
+    const periodEndDate = period?.end_date || new Date().toISOString().split('T')[0]
+
+    // 今期間の支出データを取得
     const { data: expenses } = await supabase
       .from('expenses')
       .select(`
@@ -99,7 +109,8 @@ export async function POST(request: Request) {
         user:users(nickname)
       `)
       .eq('household_id', householdId)
-      .gte('date', startDate)
+      .gte('date', periodStartDate)
+      .lte('date', periodEndDate)
       .order('date', { ascending: false })
 
     // 回数ルールと現在の利用状況を取得
@@ -248,7 +259,8 @@ ${
 ## 今日のコンテキスト
 - 日付: ${today}（${dayName}）
 - ${getDayContext()}
-- 月の${new Date().getDate()}日目（残り${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate()}日）
+- 計測期間: ${periodStartDate} 〜 ${periodEndDate}
+- 期間の${Math.ceil((new Date(today).getTime() - new Date(periodStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1}日目（残り${Math.ceil((new Date(periodEndDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24))}日）
 `
 
     // プロンプトを構築（設定のシステムプロンプト + 支出データ）
