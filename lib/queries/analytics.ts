@@ -169,28 +169,28 @@ export function useYearlyExpenses(householdId: string | undefined, year: number)
 
       const supabase = createClient()
 
-      // 12ヶ月分の締め日ベース期間を取得
-      const periods: { month: number; startDate: string; endDate: string }[] = []
-      for (let i = 0; i < 12; i++) {
-        const targetDate = new Date(year, i, 15) // 各月の中日
-        const { data: periodData, error: periodError } = await supabase.rpc(
-          'get_period_for_date',
-          {
-            p_household_id: householdId,
-            p_target_date: format(targetDate, 'yyyy-MM-dd'),
-          }
-        )
+      // 12ヶ月分の締め日ベース期間を並列で取得
+      const periodPromises = Array.from({ length: 12 }, (_, i) => {
+        const targetDate = new Date(year, i, 15)
+        return supabase.rpc('get_period_for_date', {
+          p_household_id: householdId,
+          p_target_date: format(targetDate, 'yyyy-MM-dd'),
+        }).then(({ data, error }) => {
+          if (error) throw error
+          const period = data?.[0]
+          return period ? { month: i, startDate: period.start_date, endDate: period.end_date } : null
+        })
+      })
 
-        if (periodError) throw periodError
+      const periodResults = await Promise.all(periodPromises)
+      const periods = periodResults.filter((p): p is { month: number; startDate: string; endDate: string } => p !== null)
 
-        const period = periodData?.[0]
-        if (period) {
-          periods.push({
-            month: i,
-            startDate: period.start_date,
-            endDate: period.end_date,
-          })
-        }
+      if (periods.length === 0) {
+        return Array.from({ length: 12 }, (_, i) => ({
+          month: i,
+          monthLabel: `${i + 1}月`,
+          amount: 0,
+        }))
       }
 
       // 全期間をカバーする日付範囲で支出を取得
@@ -222,7 +222,6 @@ export function useYearlyExpenses(householdId: string | undefined, year: number)
 
       data?.forEach((expense) => {
         const expenseDate = expense.date
-        // どの期間に属するか判定
         const matchingPeriod = periods.find(
           (p) => expenseDate >= p.startDate && expenseDate <= p.endDate
         )

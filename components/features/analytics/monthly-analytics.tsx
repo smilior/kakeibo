@@ -1,14 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks, isSameMonth } from 'date-fns'
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks } from 'date-fns'
 
-// 先月の開始日を取得（振り返り用）
-const getLastMonthStart = () => {
-  const now = new Date()
-  const lastMonth = subMonths(now, 1)
-  return startOfMonth(lastMonth)
-}
 import { ja } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -101,25 +95,25 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
     {} as Record<string, { userId: string; userName: string; nickname?: string | null; amount: number; isFamily?: boolean }>
   )
 
-  // 週別集計（月内の週ごとの支出）
-  const monthStart = startOfMonth(currentMonth)
-  const monthEnd = endOfMonth(currentMonth)
+  // 週別集計（締め日ベースの期間内の週ごとの支出）
+  const periodStart = data?.currentStart ? new Date(data.currentStart) : startOfMonth(currentMonth)
+  const periodEnd = data?.currentEnd ? new Date(data.currentEnd) : endOfMonth(currentMonth)
 
   const weeklyTotals: { week: number; label: string; amount: number }[] = []
   let weekNum = 1
-  let weekStart = startOfWeek(monthStart, { weekStartsOn: 1 })
+  let weekStart = startOfWeek(periodStart, { weekStartsOn: 1 })
 
-  while (weekStart <= monthEnd) {
+  while (weekStart <= periodEnd) {
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
     const weekAmount = currentExpenses
       .filter((e) => {
         const expenseDate = new Date(e.date)
-        return expenseDate >= weekStart && expenseDate <= weekEnd && isSameMonth(expenseDate, currentMonth)
+        return expenseDate >= weekStart && expenseDate <= weekEnd && expenseDate >= periodStart && expenseDate <= periodEnd
       })
       .reduce((sum, e) => sum + e.amount, 0)
 
-    // 月内に含まれる週のみ追加
-    if (weekStart <= monthEnd && weekEnd >= monthStart) {
+    // 期間内に含まれる週のみ追加
+    if (weekStart <= periodEnd && weekEnd >= periodStart) {
       weeklyTotals.push({
         week: weekNum,
         label: `第${weekNum}週`,
@@ -140,9 +134,8 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
       amount: item.amount,
     }))
 
-  // AI分析用: 常に先月の開始日（振り返りは完結した期間で行う）
-  const lastMonthStart = getLastMonthStart()
-  const periodStartStr = format(lastMonthStart, 'yyyy-MM-dd')
+  // AI分析用: 先月の締め日ベースの開始日（振り返りは完結した期間で行う）
+  const periodStartStr = data?.previousStart || ''
 
   return (
     <div className="space-y-4">
@@ -156,6 +149,12 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
             <p className="font-semibold">
               {format(currentMonth, 'yyyy年M月', { locale: ja })}
             </p>
+            {data?.currentStart && data?.currentEnd && (
+              <p className="text-xs text-muted-foreground">
+                {format(new Date(data.currentStart), 'M/d', { locale: ja })} 〜{' '}
+                {format(new Date(data.currentEnd), 'M/d', { locale: ja })}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               合計: ¥{currentTotal.toLocaleString()}
             </p>
