@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ export default function HouseholdPage() {
     user?.household?.high_amount_threshold || 5000
   )
   const [resetDay, setResetDay] = useState(user?.household?.reset_day || 1)
+  const [skipHolidays, setSkipHolidays] = useState(user?.household?.skip_holidays || false)
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [memberToRemove, setMemberToRemove] = useState<{
@@ -103,6 +105,7 @@ export default function HouseholdPage() {
           name: householdName,
           high_amount_threshold: highAmountThreshold,
           reset_day: resetDay,
+          skip_holidays: skipHolidays,
         })
         .eq('id', user.household_id)
 
@@ -231,6 +234,19 @@ export default function HouseholdPage() {
               <p className="text-xs text-muted-foreground">
                 毎月この日から翌月の前日までが1ヶ月の計測期間になります
               </p>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="skipHolidays">土日祝日を避ける</Label>
+                <p className="text-xs text-muted-foreground">
+                  締め日が土日祝日の場合、直前の平日に前倒しします
+                </p>
+              </div>
+              <Switch
+                id="skipHolidays"
+                checked={skipHolidays}
+                onCheckedChange={setSkipHolidays}
+              />
             </div>
             <Button onClick={handleSave} disabled={isSaving} className="w-full">
               {isSaving ? '保存中...' : '保存'}

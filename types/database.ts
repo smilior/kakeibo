@@ -23,6 +23,7 @@ export type Database = {
           line_notify_token: string | null
           high_amount_threshold: number
           reset_day: number
+          skip_holidays: boolean
           ai_model: string | null
           ai_system_prompt: string | null
           family_info: FamilyInfo | null
@@ -35,6 +36,7 @@ export type Database = {
           line_notify_token?: string | null
           high_amount_threshold?: number
           reset_day?: number
+          skip_holidays?: boolean
           ai_model?: string | null
           ai_system_prompt?: string | null
           family_info?: FamilyInfo | null
@@ -47,6 +49,7 @@ export type Database = {
           line_notify_token?: string | null
           high_amount_threshold?: number
           reset_day?: number
+          skip_holidays?: boolean
           ai_model?: string | null
           ai_system_prompt?: string | null
           family_info?: FamilyInfo | null
