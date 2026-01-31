@@ -67,7 +67,7 @@ export function ExpenseDetailSheet({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {expense.family_member ? `${expense.family_member.name}・` : ''}
-                      {expense.is_family ? '家族' : (expense.user?.nickname || expense.user?.name)}
+                      {expense.user?.nickname || expense.user?.name}
                     </p>
                   </div>
                 </CardContent>

@@ -30,7 +30,6 @@ const expenseSchema = z.object({
   amount: z.number().min(1, '金額を入力してください'),
   categoryId: z.string().min(1, 'カテゴリを選択してください'),
   memo: z.string().optional(),
-  isFamily: z.boolean(),
   familyMemberId: z.string().optional(),
 })
 
@@ -56,7 +55,6 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
       amount: 0,
       categoryId: '',
       memo: '',
-      isFamily: false,
       familyMemberId: '',
     },
   })
@@ -84,7 +82,6 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
         amount: values.amount,
         date: format(values.date, 'yyyy-MM-dd'),
         memo: values.memo || undefined,
-        is_family: values.isFamily,
         family_member_id: values.familyMemberId || undefined,
       })
 
@@ -230,19 +227,6 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
           </div>
         </div>
       )}
-
-      {/* 家族フラグ */}
-      <div className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          id="isFamily"
-          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
-          {...form.register('isFamily')}
-        />
-        <Label htmlFor="isFamily" className="cursor-pointer">
-          家族の支出として記録
-        </Label>
-      </div>
 
       {/* メモ */}
       <div className="space-y-2">

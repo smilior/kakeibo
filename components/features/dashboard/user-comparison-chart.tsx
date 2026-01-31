@@ -8,7 +8,7 @@ interface UserTotal {
   nickname?: string | null
   amount: number
   count?: number
-  isFamily?: boolean
+  isFamilyMember?: boolean
   isSubscription?: boolean
 }
 
@@ -17,8 +17,8 @@ interface UserComparisonChartProps {
   onUserClick?: (userId: string, label: string) => void
 }
 
-const COLORS = ['#F97316', '#3B82F6', '#A855F7']
-const FAMILY_COLOR = '#22C55E'
+const COLORS = ['#F97316', '#3B82F6', '#A855F7', '#EC4899', '#14B8A6', '#F59E0B']
+const FAMILY_MEMBER_COLOR = '#22C55E'
 const SUBSCRIPTION_COLOR = '#8B5CF6'
 
 export function UserComparisonChart({ data, onUserClick }: UserComparisonChartProps) {
@@ -28,7 +28,7 @@ export function UserComparisonChart({ data, onUserClick }: UserComparisonChartPr
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">夫婦別支出</CardTitle>
+          <CardTitle className="text-base">家族別支出</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="py-4 text-center text-sm text-muted-foreground">
@@ -42,7 +42,7 @@ export function UserComparisonChart({ data, onUserClick }: UserComparisonChartPr
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">夫婦別支出</CardTitle>
+        <CardTitle className="text-base">家族別支出</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-center gap-6">
@@ -50,14 +50,12 @@ export function UserComparisonChart({ data, onUserClick }: UserComparisonChartPr
             const percentage = total > 0 ? (user.amount / total) * 100 : 0
             const color = user.isSubscription
               ? SUBSCRIPTION_COLOR
-              : user.isFamily
-                ? FAMILY_COLOR
+              : user.isFamilyMember
+                ? FAMILY_MEMBER_COLOR
                 : COLORS[index % COLORS.length]
             const label = user.isSubscription
               ? '🔄 サブスク'
-              : user.isFamily
-                ? '👨‍👩‍👧 家族'
-                : (user.nickname || user.userName)
+              : (user.nickname || user.userName)
             const isClickable = onUserClick && !user.isSubscription
             return (
               <div

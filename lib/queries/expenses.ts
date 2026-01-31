@@ -69,7 +69,6 @@ interface CreateExpenseInput {
   amount: number
   date: string
   memo?: string
-  is_family?: boolean
   family_member_id?: string
 }
 
@@ -113,7 +112,6 @@ interface UpdateExpenseInput {
   amount?: number
   date?: string
   memo?: string
-  is_family?: boolean
   family_member_id?: string | null
 }
 

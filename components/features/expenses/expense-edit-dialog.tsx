@@ -54,7 +54,6 @@ export function ExpenseEditDialog({
   const [amount, setAmount] = useState(0)
   const [categoryId, setCategoryId] = useState('')
   const [memo, setMemo] = useState('')
-  const [isFamily, setIsFamily] = useState(false)
   const [familyMemberId, setFamilyMemberId] = useState<string>('')
 
   // ダイアログが開かれた時に値を初期化
@@ -64,7 +63,6 @@ export function ExpenseEditDialog({
       setAmount(expense.amount)
       setCategoryId(expense.category_id)
       setMemo(expense.memo || '')
-      setIsFamily(expense.is_family)
       setFamilyMemberId(expense.family_member_id || '')
     }
   }, [expense, open])
@@ -88,7 +86,6 @@ export function ExpenseEditDialog({
         amount,
         category_id: categoryId,
         memo: memo || undefined,
-        is_family: isFamily,
         family_member_id: familyMemberId || null,
       })
       toast.success('支出を更新しました')
@@ -208,20 +205,6 @@ export function ExpenseEditDialog({
               </div>
             </div>
           )}
-
-          {/* 家族フラグ */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="edit-isFamily"
-              className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
-              checked={isFamily}
-              onChange={(e) => setIsFamily(e.target.checked)}
-            />
-            <Label htmlFor="edit-isFamily" className="cursor-pointer">
-              家族の支出として記録
-            </Label>
-          </div>
 
           {/* メモ */}
           <div className="space-y-2">

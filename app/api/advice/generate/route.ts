@@ -104,9 +104,10 @@ export async function POST(request: Request) {
       .select(`
         amount,
         date,
-        is_family,
+        family_member_id,
         category:categories(name),
-        user:users(nickname)
+        user:users(nickname),
+        family_member:family_members(name)
       `)
       .eq('household_id', householdId)
       .gte('date', periodStartDate)
@@ -139,7 +140,8 @@ export async function POST(request: Request) {
       const category = expense.category as unknown as { name: string } | null
       const userInfo = expense.user as unknown as { nickname: string } | null
       const categoryName = category?.name || 'その他'
-      const userName = expense.is_family ? '家族' : (userInfo?.nickname || '不明')
+      const familyMemberInfo = expense.family_member as unknown as { name: string } | null
+      const userName = familyMemberInfo?.name || userInfo?.nickname || '不明'
 
       // カテゴリ別集計
       if (!categoryTotals[categoryName]) {
@@ -190,8 +192,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // 夫婦バランスの分析
-    const userEntries = Object.entries(userTotals).filter(([name]) => name !== '家族')
+    // 家族バランスの分析
+    const userEntries = Object.entries(userTotals)
     const balanceAnalysis = userEntries.length >= 2
       ? (() => {
           const sorted = userEntries.sort((a, b) => b[1].amount - a[1].amount)
@@ -209,14 +211,14 @@ export async function POST(request: Request) {
 ## あなたの役割
 - コーチとして目標達成に向けた具体的なアドバイスをする
 - 外食・カフェ、趣味・娯楽、衝動買いに特に注目する
-- 夫婦のバランスにも触れる
+- 家族メンバーごとの支出バランスにも触れる
 - 短く的確に（1-2文、60文字以内）
 
 ## 出力ルール
 1. コーチとして具体的な行動を1つ提案する
 2. 数字を含める（金額や回数）
 3. 回数ルールが上限に近い場合は優先的に警告
-4. 夫婦バランスが偏っている場合は触れる
+4. 家族メンバー間でバランスが偏っている場合は触れる
 5. 曜日に応じたアドバイス（金曜→週末計画、月曜→振り返り）
 6. 「！」を使って前向きに締める
 
@@ -234,7 +236,7 @@ ${Object.entries(categoryTotals)
   .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()} (${data.count}回)`)
   .join('\n')}
 
-### 夫婦別支出
+### 家族別支出
 ${Object.entries(userTotals)
   .map(([name, data]) => `- ${name}: ¥${data.amount.toLocaleString()} (${data.count}回)`)
   .join('\n')}

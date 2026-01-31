@@ -22,7 +22,7 @@ export interface UserTotal {
   nickname?: string | null
   amount: number
   count: number
-  isFamily?: boolean
+  isFamilyMember?: boolean
   isSubscription?: boolean
 }
 
@@ -144,20 +144,22 @@ export function useDashboardSummary(householdId: string | undefined) {
         >
       )
 
-      // ユーザー別集計（家族支出は別枠）
+      // ユーザー別 + 家族メンバー別集計
       const userTotals = expenses.reduce(
         (acc, expense) => {
-          // is_familyがtrueの場合は「家族」として集計
-          const key = expense.is_family ? 'family' : expense.user_id
+          // family_member_idがある場合は家族メンバーとして集計
+          const key = expense.family_member_id
+            ? `fm_${expense.family_member_id}`
+            : expense.user_id
           if (!acc[key]) {
-            if (expense.is_family) {
+            if (expense.family_member_id) {
               acc[key] = {
-                userId: 'family',
-                userName: '家族',
-                nickname: '家族',
+                userId: `fm_${expense.family_member_id}`,
+                userName: expense.family_member?.name || '',
+                nickname: expense.family_member?.name,
                 amount: 0,
                 count: 0,
-                isFamily: true,
+                isFamilyMember: true,
               }
             } else {
               acc[key] = {
@@ -166,7 +168,7 @@ export function useDashboardSummary(householdId: string | undefined) {
                 nickname: expense.user?.nickname,
                 amount: 0,
                 count: 0,
-                isFamily: false,
+                isFamilyMember: false,
               }
             }
           }
@@ -182,7 +184,7 @@ export function useDashboardSummary(householdId: string | undefined) {
             nickname?: string | null
             amount: number
             count: number
-            isFamily?: boolean
+            isFamilyMember?: boolean
           }
         >
       )

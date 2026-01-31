@@ -71,19 +71,20 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
     {} as Record<string, { categoryId: string; categoryName: string; icon: string; amount: number }>
   )
 
-  // ユーザー別集計（家族支出は「家族」として集計）
+  // ユーザー別 + 家族メンバー別集計
   const userTotals = currentExpenses.reduce(
     (acc, expense) => {
-      // is_family が true の場合は「家族」として集計
-      const key = expense.is_family ? 'family' : expense.user_id
+      const key = expense.family_member_id
+        ? `fm_${expense.family_member_id}`
+        : expense.user_id
       if (!acc[key]) {
-        if (expense.is_family) {
+        if (expense.family_member_id) {
           acc[key] = {
-            userId: 'family',
-            userName: '家族',
-            nickname: '家族',
+            userId: `fm_${expense.family_member_id}`,
+            userName: expense.family_member?.name || '',
+            nickname: expense.family_member?.name,
             amount: 0,
-            isFamily: true,
+            isFamilyMember: true,
           }
         } else {
           acc[key] = {
@@ -91,14 +92,14 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
             userName: expense.user?.name || '',
             nickname: expense.user?.nickname,
             amount: 0,
-            isFamily: false,
+            isFamilyMember: false,
           }
         }
       }
       acc[key].amount += expense.amount
       return acc
     },
-    {} as Record<string, { userId: string; userName: string; nickname?: string | null; amount: number; isFamily?: boolean }>
+    {} as Record<string, { userId: string; userName: string; nickname?: string | null; amount: number; isFamilyMember?: boolean }>
   )
 
   // 週別集計（締め日ベースの期間内の週ごとの支出）
@@ -168,7 +169,9 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
   // ユーザー別クリック時のハンドラ
   const handleUserClick = (userId: string, label: string) => {
     const filtered = currentExpenses.filter((e) =>
-      userId === 'family' ? e.is_family : e.user_id === userId
+      userId.startsWith('fm_')
+        ? e.family_member_id === userId.replace('fm_', '')
+        : e.user_id === userId && !e.family_member_id
     )
     setSheetTitle(`${label}の支出`)
     setSheetExpenses(filtered)

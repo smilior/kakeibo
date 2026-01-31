@@ -102,9 +102,10 @@ export async function POST(request: Request) {
       .select(`
         amount,
         date,
-        is_family,
+        family_member_id,
         category:categories(name),
-        user:users(nickname)
+        user:users(nickname),
+        family_member:family_members(name)
       `)
       .eq('household_id', householdId)
       .gte('date', periodStart)
@@ -158,9 +159,10 @@ export async function POST(request: Request) {
       .select(`
         amount,
         date,
-        is_family,
+        family_member_id,
         category:categories(name),
-        user:users(nickname)
+        user:users(nickname),
+        family_member:family_members(name)
       `)
       .eq('household_id', householdId)
       .gte('date', compareStart)
@@ -190,7 +192,8 @@ export async function POST(request: Request) {
       const result: Record<string, { amount: number; count: number }> = {}
       expenses?.forEach((expense) => {
         const userInfo = expense.user as unknown as { nickname: string } | null
-        const userName = expense.is_family ? '家族' : (userInfo?.nickname || '不明')
+        const familyMemberInfo = expense.family_member as unknown as { name: string } | null
+        const userName = familyMemberInfo?.name || userInfo?.nickname || '不明'
         if (!result[userName]) {
           result[userName] = { amount: 0, count: 0 }
         }

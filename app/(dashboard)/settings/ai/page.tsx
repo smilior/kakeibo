@@ -436,11 +436,11 @@ export default function AISettingsPage() {
                 <li>※金額順でソート</li>
               </ul>
 
-              <p className="mt-2 font-semibold text-foreground">### 夫婦別支出</p>
+              <p className="mt-2 font-semibold text-foreground">### 家族別支出</p>
               <ul className="ml-4 list-disc space-y-1">
                 <li>ニックネーム: ¥金額 (N回)</li>
-                <li>家族: ¥金額 (N回)</li>
-                <li>※ 夫婦の支出比率も表示</li>
+                <li>家族メンバー名: ¥金額 (N回)</li>
+                <li>※ 家族メンバーごとの支出比率も表示</li>
               </ul>
 
               <p className="mt-2 font-semibold text-foreground">## 回数ルールの状況</p>
