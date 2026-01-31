@@ -9,11 +9,12 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Card, CardContent } from '@/components/ui/card'
-import type { Expense, Category, User } from '@/types/database'
+import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 interface ExpenseWithRelations extends Expense {
   category: Category | null
   user: User | null
+  family_member: FamilyMember | null
 }
 
 interface ExpenseDetailSheetProps {
@@ -65,6 +66,7 @@ export function ExpenseDetailSheet({
                       ¥{expense.amount.toLocaleString()}
                     </p>
                     <p className="text-xs text-muted-foreground">
+                      {expense.family_member ? `${expense.family_member.name}・` : ''}
                       {expense.is_family ? '家族' : (expense.user?.nickname || expense.user?.name)}
                     </p>
                   </div>

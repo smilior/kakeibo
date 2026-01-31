@@ -6,6 +6,7 @@ import { ja } from 'date-fns/locale'
 import { CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+
 import { Calendar } from '@/components/ui/calendar'
 import {
   Dialog,
@@ -22,12 +23,14 @@ import {
 } from '@/components/ui/popover'
 import { useUpdateExpense } from '@/lib/queries/expenses'
 import { useCategories } from '@/lib/queries/categories'
+import { useFamilyMembers } from '@/lib/queries/family-members'
 import { toast } from 'sonner'
-import type { Expense, Category, User } from '@/types/database'
+import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 interface ExpenseWithRelations extends Expense {
   category: Category | null
   user: User | null
+  family_member: FamilyMember | null
 }
 
 interface ExpenseEditDialogProps {
@@ -44,6 +47,7 @@ export function ExpenseEditDialog({
   onOpenChange,
 }: ExpenseEditDialogProps) {
   const { data: categories = [] } = useCategories(householdId)
+  const { data: familyMembers = [] } = useFamilyMembers(householdId)
   const updateExpense = useUpdateExpense()
 
   const [date, setDate] = useState<Date>(new Date())
@@ -51,6 +55,7 @@ export function ExpenseEditDialog({
   const [categoryId, setCategoryId] = useState('')
   const [memo, setMemo] = useState('')
   const [isFamily, setIsFamily] = useState(false)
+  const [familyMemberId, setFamilyMemberId] = useState<string>('')
 
   // ダイアログが開かれた時に値を初期化
   useEffect(() => {
@@ -60,6 +65,7 @@ export function ExpenseEditDialog({
       setCategoryId(expense.category_id)
       setMemo(expense.memo || '')
       setIsFamily(expense.is_family)
+      setFamilyMemberId(expense.family_member_id || '')
     }
   }, [expense, open])
 
@@ -83,6 +89,7 @@ export function ExpenseEditDialog({
         category_id: categoryId,
         memo: memo || undefined,
         is_family: isFamily,
+        family_member_id: familyMemberId || null,
       })
       toast.success('支出を更新しました')
       onOpenChange(false)
@@ -165,6 +172,42 @@ export function ExpenseEditDialog({
               ))}
             </div>
           </div>
+
+          {/* 家族メンバー選択 */}
+          {familyMembers.length > 0 && (
+            <div className="space-y-2">
+              <Label>誰のため？（任意）</Label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFamilyMemberId('')}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-sm transition-colors',
+                    !familyMemberId
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50'
+                  )}
+                >
+                  指定なし
+                </button>
+                {familyMembers.map((fm) => (
+                  <button
+                    key={fm.id}
+                    type="button"
+                    onClick={() => setFamilyMemberId(fm.id)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-sm transition-colors',
+                      familyMemberId === fm.id
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    {fm.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 家族フラグ */}
           <div className="flex items-center gap-3">

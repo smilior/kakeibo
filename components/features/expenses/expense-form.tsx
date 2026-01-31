@@ -21,6 +21,7 @@ import {
 import { useUser } from '@/hooks/use-user'
 import { useCategories } from '@/lib/queries/categories'
 import { useCreateExpense } from '@/lib/queries/expenses'
+import { useFamilyMembers } from '@/lib/queries/family-members'
 import { toast } from 'sonner'
 import type { Category } from '@/types/database'
 
@@ -30,6 +31,7 @@ const expenseSchema = z.object({
   categoryId: z.string().min(1, 'カテゴリを選択してください'),
   memo: z.string().optional(),
   isFamily: z.boolean(),
+  familyMemberId: z.string().optional(),
 })
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>
@@ -42,6 +44,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
   const router = useRouter()
   const { data: user } = useUser()
   const { data: categories = [] } = useCategories(user?.household_id ?? undefined)
+  const { data: familyMembers = [] } = useFamilyMembers(user?.household_id ?? undefined)
   const createExpense = useCreateExpense()
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -54,6 +57,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
       categoryId: '',
       memo: '',
       isFamily: false,
+      familyMemberId: '',
     },
   })
 
@@ -81,6 +85,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
         date: format(values.date, 'yyyy-MM-dd'),
         memo: values.memo || undefined,
         is_family: values.isFamily,
+        family_member_id: values.familyMemberId || undefined,
       })
 
       toast.success('支出を登録しました')
@@ -189,6 +194,42 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
           </p>
         )}
       </div>
+
+      {/* 家族メンバー選択 */}
+      {familyMembers.length > 0 && (
+        <div className="space-y-2">
+          <Label>誰のため？（任意）</Label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => form.setValue('familyMemberId', '')}
+              className={cn(
+                'rounded-full border px-3 py-1 text-sm transition-colors',
+                !form.watch('familyMemberId')
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/50'
+              )}
+            >
+              指定なし
+            </button>
+            {familyMembers.map((fm) => (
+              <button
+                key={fm.id}
+                type="button"
+                onClick={() => form.setValue('familyMemberId', fm.id)}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-sm transition-colors',
+                  form.watch('familyMemberId') === fm.id
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                {fm.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 家族フラグ */}
       <div className="flex items-center gap-3">

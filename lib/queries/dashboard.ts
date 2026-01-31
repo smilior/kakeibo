@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import type { Expense, Category, User } from '@/types/database'
+import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 // 型定義
 export interface ExpenseWithRelations extends Expense {
   category: Category | null
   user: User | null
+  family_member: FamilyMember | null
 }
 export interface CategoryTotal {
   categoryId: string
@@ -77,7 +78,8 @@ export function useDashboardSummary(householdId: string | undefined) {
         .select(`
           *,
           category:categories(id, name, icon),
-          user:users(id, name, nickname)
+          user:users(id, name, nickname),
+          family_member:family_members(id, name)
         `)
         .eq('household_id', householdId)
         .gte('date', period.start_date)

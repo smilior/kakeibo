@@ -3,11 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
-import type { Expense, Category, User } from '@/types/database'
+import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 interface ExpenseWithRelations extends Expense {
   category: Category | null
   user: User | null
+  family_member: FamilyMember | null
 }
 
 interface RecentExpensesProps {
@@ -69,8 +70,8 @@ export function RecentExpenses({ expenses }: RecentExpensesProps) {
               <span className="font-medium">
                 ¥{expense.amount.toLocaleString()}
               </span>
-              <span className="w-16 truncate text-muted-foreground text-right">
-                {displayName}
+              <span className="w-20 truncate text-muted-foreground text-right">
+                {expense.family_member ? `${expense.family_member.name}・` : ''}{displayName}
               </span>
             </div>
           )

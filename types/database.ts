@@ -16,6 +16,35 @@ export interface FamilyInfo {
 export type Database = {
   public: {
     Tables: {
+      family_members: {
+        Row: {
+          id: string
+          household_id: string
+          name: string
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          name: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          name?: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
       households: {
         Row: {
           id: string
@@ -192,6 +221,7 @@ export type Database = {
           date: string
           memo: string | null
           is_family: boolean
+          family_member_id: string | null
           created_at: string
           updated_at: string
         }
@@ -204,6 +234,7 @@ export type Database = {
           date?: string
           memo?: string | null
           is_family?: boolean
+          family_member_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -216,6 +247,7 @@ export type Database = {
           date?: string
           memo?: string | null
           is_family?: boolean
+          family_member_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -422,6 +454,7 @@ export type Insertable<T extends keyof Database['public']['Tables']> =
 export type Updatable<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Update']
 
+export type FamilyMember = Tables<'family_members'>
 export type Household = Tables<'households'>
 export type User = Tables<'users'>
 export type Invitation = Tables<'invitations'>

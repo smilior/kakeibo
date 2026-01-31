@@ -36,7 +36,8 @@ export function useWeeklyExpenses(householdId: string | undefined, weekStart: Da
         .select(`
           *,
           category:categories(id, name, icon),
-          user:users(id, name, nickname, avatar_url)
+          user:users(id, name, nickname, avatar_url),
+          family_member:family_members(id, name)
         `)
         .eq('household_id', householdId)
         .gte('date', format(currentStart, 'yyyy-MM-dd'))
@@ -51,7 +52,8 @@ export function useWeeklyExpenses(householdId: string | undefined, weekStart: Da
         .select(`
           *,
           category:categories(id, name, icon),
-          user:users(id, name, nickname, avatar_url)
+          user:users(id, name, nickname, avatar_url),
+          family_member:family_members(id, name)
         `)
         .eq('household_id', householdId)
         .gte('date', format(prevWeekStart, 'yyyy-MM-dd'))
@@ -119,7 +121,8 @@ export function useMonthlyComparison(householdId: string | undefined, month: Dat
         .select(`
           *,
           category:categories(id, name, icon),
-          user:users(id, name, nickname, avatar_url)
+          user:users(id, name, nickname, avatar_url),
+          family_member:family_members(id, name)
         `)
         .eq('household_id', householdId)
         .gte('date', current_period.start_date)
@@ -136,7 +139,8 @@ export function useMonthlyComparison(householdId: string | undefined, month: Dat
           .select(`
             *,
             category:categories(id, name, icon),
-            user:users(id, name, nickname, avatar_url)
+            user:users(id, name, nickname, avatar_url),
+            family_member:family_members(id, name)
           `)
           .eq('household_id', householdId)
           .gte('date', previous_period.start_date)

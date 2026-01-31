@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
         *,
         category:categories(name, icon),
         user:users(name, nickname),
-        household:households(line_notify_token, high_amount_threshold)
+        household:households(line_notify_token, high_amount_threshold),
+        family_member:family_members(name)
       `)
       .eq('id', expenseId)
       .single()
@@ -44,8 +45,11 @@ export async function POST(request: NextRequest) {
     const threshold = expense.household?.high_amount_threshold || 5000
     const isHighAmount = expense.amount >= threshold
 
+    // @ts-ignore
+    const familyMemberName = expense.family_member?.name
+
     let message = `\n【支出登録】\n`
-    message += `👤 ${userName}\n`
+    message += `👤 ${userName}${familyMemberName ? `（${familyMemberName}のため）` : ''}\n`
     // @ts-ignore
     message += `📁 ${expense.category?.name}\n`
     message += `💰 ¥${expense.amount.toLocaleString()}\n`

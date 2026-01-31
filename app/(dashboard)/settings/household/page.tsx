@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Copy, RefreshCw, Users, Trash2, Crown, User } from 'lucide-react'
+import { ChevronLeft, Copy, RefreshCw, Users, Trash2, Crown, User, Plus, Pencil, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,6 +30,12 @@ import { useUser } from '@/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useFamilyMembers,
+  useCreateFamilyMember,
+  useUpdateFamilyMember,
+  useDeleteFamilyMember,
+} from '@/lib/queries/family-members'
 
 export default function HouseholdPage() {
   const router = useRouter()
@@ -49,6 +55,15 @@ export default function HouseholdPage() {
     name: string
   } | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [familyMemberName, setFamilyMemberName] = useState('')
+  const [editingFamilyMember, setEditingFamilyMember] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [familyMemberToDelete, setFamilyMemberToDelete] = useState<{
+    id: string
+    name: string
+  } | null>(null)
 
   // 招待リンクを取得
   const { data: invitation, refetch: refetchInvitation } = useQuery({
@@ -89,6 +104,12 @@ export default function HouseholdPage() {
     },
     enabled: !!user?.household_id,
   })
+
+  // 家族メンバー
+  const { data: familyMembers = [] } = useFamilyMembers(user?.household_id ?? undefined)
+  const createFamilyMember = useCreateFamilyMember()
+  const updateFamilyMember = useUpdateFamilyMember()
+  const deleteFamilyMember = useDeleteFamilyMember()
 
   // 現在のユーザーがオーナーかどうか
   const isOwner = user?.role === 'owner'
@@ -150,6 +171,52 @@ export default function HouseholdPage() {
     if (invitation?.token) {
       navigator.clipboard.writeText(invitation.token)
       toast.success('招待コードをコピーしました')
+    }
+  }
+
+  const handleAddFamilyMember = async () => {
+    if (!user?.household_id || !familyMemberName.trim()) return
+
+    try {
+      await createFamilyMember.mutateAsync({
+        household_id: user.household_id,
+        name: familyMemberName.trim(),
+        sort_order: familyMembers.length,
+      })
+      setFamilyMemberName('')
+      toast.success('家族メンバーを追加しました')
+    } catch (error) {
+      console.error('Failed to add family member:', error)
+      toast.error('追加に失敗しました')
+    }
+  }
+
+  const handleUpdateFamilyMember = async () => {
+    if (!editingFamilyMember || !editingFamilyMember.name.trim()) return
+
+    try {
+      await updateFamilyMember.mutateAsync({
+        id: editingFamilyMember.id,
+        name: editingFamilyMember.name.trim(),
+      })
+      setEditingFamilyMember(null)
+      toast.success('家族メンバーを更新しました')
+    } catch (error) {
+      console.error('Failed to update family member:', error)
+      toast.error('更新に失敗しました')
+    }
+  }
+
+  const handleDeleteFamilyMember = async () => {
+    if (!familyMemberToDelete) return
+
+    try {
+      await deleteFamilyMember.mutateAsync(familyMemberToDelete.id)
+      setFamilyMemberToDelete(null)
+      toast.success('家族メンバーを削除しました')
+    } catch (error) {
+      console.error('Failed to delete family member:', error)
+      toast.error('削除に失敗しました')
     }
   }
 
@@ -317,6 +384,98 @@ export default function HouseholdPage() {
           </CardContent>
         </Card>
 
+        {/* 家族メンバー */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              家族メンバー
+            </CardTitle>
+            <CardDescription>
+              支出を「誰のため」に分類するためのメンバーです（例：子供の名前）
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {familyMembers.map((fm) => (
+              <div
+                key={fm.id}
+                className="flex items-center gap-3 rounded-lg border p-3"
+              >
+                {editingFamilyMember?.id === fm.id ? (
+                  <>
+                    <Input
+                      value={editingFamilyMember?.name ?? ''}
+                      onChange={(e) =>
+                        editingFamilyMember && setEditingFamilyMember({ id: editingFamilyMember.id, name: e.target.value })
+                      }
+                      className="flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleUpdateFamilyMember()
+                        if (e.key === 'Escape') setEditingFamilyMember(null)
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleUpdateFamilyMember}
+                      disabled={updateFamilyMember.isPending}
+                    >
+                      保存
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingFamilyMember(null)}
+                    >
+                      取消
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm font-medium">
+                      {fm.name.slice(0, 2)}
+                    </div>
+                    <span className="flex-1 font-medium">{fm.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingFamilyMember({ id: fm.id, name: fm.name })}
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setFamilyMemberToDelete({ id: fm.id, name: fm.name })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="名前を入力（例：栞里）"
+                value={familyMemberName}
+                onChange={(e) => setFamilyMemberName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddFamilyMember()
+                }}
+              />
+              <Button
+                onClick={handleAddFamilyMember}
+                disabled={!familyMemberName.trim() || createFamilyMember.isPending}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                追加
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 招待 */}
         <Card>
           <CardHeader>
@@ -357,6 +516,32 @@ export default function HouseholdPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 家族メンバー削除確認ダイアログ */}
+      <AlertDialog
+        open={!!familyMemberToDelete}
+        onOpenChange={(open) => !open && setFamilyMemberToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>家族メンバーを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {familyMemberToDelete?.name}を削除します。
+              過去の支出データには影響しません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteFamilyMember}
+              disabled={deleteFamilyMember.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteFamilyMember.isPending ? '削除中...' : '削除する'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* メンバー削除確認ダイアログ */}
       <AlertDialog

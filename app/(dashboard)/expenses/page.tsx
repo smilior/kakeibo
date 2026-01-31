@@ -10,11 +10,12 @@ import { useUser } from '@/hooks/use-user'
 import { useExpenses, useDeleteExpense } from '@/lib/queries/expenses'
 import { ExpenseEditDialog } from '@/components/features/expenses/expense-edit-dialog'
 import { toast } from 'sonner'
-import type { Expense, Category, User } from '@/types/database'
+import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 interface ExpenseWithRelations extends Expense {
   category: Category | null
   user: User | null
+  family_member: FamilyMember | null
 }
 
 export default function ExpensesPage() {
@@ -135,9 +136,16 @@ export default function ExpensesPage() {
                         <p className="font-semibold">
                           ¥{expense.amount.toLocaleString()}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {expense.user?.nickname || expense.user?.name}
-                        </p>
+                        <div className="flex items-center justify-end gap-1">
+                          {expense.family_member && (
+                            <span className="inline-block rounded-full bg-secondary px-1.5 py-0.5 text-[10px]">
+                              {expense.family_member.name}
+                            </span>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {expense.user?.nickname || expense.user?.name}
+                          </p>
+                        </div>
                       </div>
                       {expense.user_id === user?.id && (
                         <div className="flex">

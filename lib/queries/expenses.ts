@@ -13,7 +13,8 @@ async function fetchExpenses(supabase: ReturnType<typeof createClient>, househol
     .select(`
       *,
       category:categories(id, name, icon),
-      user:users(id, name, nickname, avatar_url)
+      user:users(id, name, nickname, avatar_url),
+      family_member:family_members(id, name)
     `)
     .eq('household_id', householdId)
     .gte('date', startDate)
@@ -69,6 +70,7 @@ interface CreateExpenseInput {
   date: string
   memo?: string
   is_family?: boolean
+  family_member_id?: string
 }
 
 export function useCreateExpense() {
@@ -112,6 +114,7 @@ interface UpdateExpenseInput {
   date?: string
   memo?: string
   is_family?: boolean
+  family_member_id?: string | null
 }
 
 export function useUpdateExpense() {

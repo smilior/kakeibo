@@ -23,11 +23,12 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import type { Expense, Category, User } from '@/types/database'
+import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 interface ExpenseWithRelations extends Expense {
   category: Category | null
   user: User | null
+  family_member: FamilyMember | null
 }
 
 interface MonthlyAnalyticsProps {
