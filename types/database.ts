@@ -304,6 +304,70 @@ export type Database = {
           created_at?: string
         }
       }
+      expense_presets: {
+        Row: {
+          id: string
+          household_id: string
+          name: string
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          name: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          name?: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      expense_preset_items: {
+        Row: {
+          id: string
+          preset_id: string
+          category_id: string
+          family_member_id: string | null
+          amount: number
+          memo: string | null
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          preset_id: string
+          category_id: string
+          family_member_id?: string | null
+          amount: number
+          memo?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          preset_id?: string
+          category_id?: string
+          family_member_id?: string | null
+          amount?: number
+          memo?: string | null
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       period_analyses: {
         Row: {
           id: string
@@ -416,3 +480,5 @@ export type Rule = Tables<'rules'>
 export type Expense = Tables<'expenses'>
 export type AiDiary = Tables<'ai_diaries'>
 export type PeriodAnalysis = Tables<'period_analyses'>
+export type ExpensePreset = Tables<'expense_presets'>
+export type ExpensePresetItem = Tables<'expense_preset_items'>

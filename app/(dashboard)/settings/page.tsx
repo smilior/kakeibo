@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Folder, Gauge, Home, MessageSquare, Sparkles } from 'lucide-react'
+import { ChevronRight, ClipboardList, Folder, Gauge, Home, MessageSquare, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
 const settingsItems = [
@@ -16,6 +16,12 @@ const settingsItems = [
     icon: Gauge,
     label: 'ルール設定',
     description: '回数制限の設定',
+  },
+  {
+    href: '/settings/presets',
+    icon: ClipboardList,
+    label: 'プリセット管理',
+    description: '定型支出のテンプレート管理',
   },
   {
     href: '/settings/household',
