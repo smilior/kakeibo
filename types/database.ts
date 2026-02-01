@@ -275,50 +275,6 @@ export type Database = {
           created_at?: string
         }
       }
-      subscriptions: {
-        Row: {
-          id: string
-          household_id: string
-          category_id: string
-          name: string
-          monthly_amount: number
-          contract_date: string
-          renewal_date: string | null
-          memo: string | null
-          is_active: boolean
-          cancelled_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          household_id: string
-          category_id: string
-          name: string
-          monthly_amount: number
-          contract_date: string
-          renewal_date?: string | null
-          memo?: string | null
-          is_active?: boolean
-          cancelled_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          household_id?: string
-          category_id?: string
-          name?: string
-          monthly_amount?: number
-          contract_date?: string
-          renewal_date?: string | null
-          memo?: string | null
-          is_active?: boolean
-          cancelled_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
       ai_diaries: {
         Row: {
           id: string
@@ -458,6 +414,5 @@ export type Invitation = Tables<'invitations'>
 export type Category = Tables<'categories'>
 export type Rule = Tables<'rules'>
 export type Expense = Tables<'expenses'>
-export type Subscription = Tables<'subscriptions'>
 export type AiDiary = Tables<'ai_diaries'>
 export type PeriodAnalysis = Tables<'period_analyses'>

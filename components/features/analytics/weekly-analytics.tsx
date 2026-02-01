@@ -187,9 +187,6 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
             <p className="text-sm text-muted-foreground">
               合計: ¥{currentTotal.toLocaleString()}
             </p>
-            <p className="text-xs text-muted-foreground">
-              ※サブスクは含まれません
-            </p>
           </div>
           <Button variant="ghost" size="icon" onClick={handleNextWeek}>
             <ChevronRight className="h-5 w-5" />

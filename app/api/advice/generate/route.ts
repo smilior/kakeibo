@@ -124,13 +124,6 @@ export async function POST(request: Request) {
       .eq('household_id', householdId)
       .eq('is_active', true)
 
-    // サブスク情報を取得
-    const { data: subscriptions } = await supabase
-      .from('subscriptions')
-      .select('name, monthly_amount')
-      .eq('household_id', householdId)
-      .eq('is_active', true)
-
     // カテゴリ別・ユーザー別の支出集計
     const categoryTotals: Record<string, { amount: number; count: number }> = {}
     const userTotals: Record<string, { amount: number; count: number }> = {}
@@ -172,10 +165,6 @@ export async function POST(request: Request) {
         remaining: rule.monthly_limit - current,
       }
     })
-
-    // サブスク合計
-    const subscriptionTotal =
-      subscriptions?.reduce((sum, s) => sum + s.monthly_amount, 0) || 0
 
     // 曜日別のコンテキスト
     const getDayContext = () => {
@@ -228,7 +217,6 @@ export async function POST(request: Request) {
     const dataPrompt = `
 ## 今月の支出データ
 - 総支出: ¥${totalExpense.toLocaleString()}
-- サブスク月額: ¥${subscriptionTotal.toLocaleString()}
 
 ### カテゴリ別
 ${Object.entries(categoryTotals)

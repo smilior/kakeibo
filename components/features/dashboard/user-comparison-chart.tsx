@@ -9,7 +9,6 @@ interface UserTotal {
   amount: number
   count?: number
   isFamilyMember?: boolean
-  isSubscription?: boolean
 }
 
 interface UserComparisonChartProps {
@@ -19,7 +18,6 @@ interface UserComparisonChartProps {
 
 const COLORS = ['#F97316', '#3B82F6', '#A855F7', '#EC4899', '#14B8A6', '#F59E0B']
 const FAMILY_MEMBER_COLOR = '#22C55E'
-const SUBSCRIPTION_COLOR = '#8B5CF6'
 
 export function UserComparisonChart({ data, onUserClick }: UserComparisonChartProps) {
   const total = data.reduce((sum, item) => sum + item.amount, 0)
@@ -45,18 +43,14 @@ export function UserComparisonChart({ data, onUserClick }: UserComparisonChartPr
         <CardTitle className="text-base">家族別支出</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-center gap-6">
+        <div className="grid grid-cols-3 gap-4">
           {data.map((user, index) => {
             const percentage = total > 0 ? (user.amount / total) * 100 : 0
-            const color = user.isSubscription
-              ? SUBSCRIPTION_COLOR
-              : user.isFamilyMember
-                ? FAMILY_MEMBER_COLOR
-                : COLORS[index % COLORS.length]
-            const label = user.isSubscription
-              ? '🔄 サブスク'
-              : (user.nickname || user.userName)
-            const isClickable = onUserClick && !user.isSubscription
+            const color = user.isFamilyMember
+              ? FAMILY_MEMBER_COLOR
+              : COLORS[index % COLORS.length]
+            const label = user.nickname || user.userName
+            const isClickable = !!onUserClick
             return (
               <div
                 key={user.userId}

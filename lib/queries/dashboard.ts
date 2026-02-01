@@ -23,7 +23,6 @@ export interface UserTotal {
   amount: number
   count: number
   isFamilyMember?: boolean
-  isSubscription?: boolean
 }
 
 export interface RemainingCount {
@@ -42,8 +41,6 @@ export interface PeriodInfo {
 
 export interface DashboardSummary {
   totalExpense: number
-  subscriptionTotal: number
-  variableExpense: number
   expenses: ExpenseWithRelations[]
   categoryTotals: CategoryTotal[]
   userTotals: UserTotal[]
@@ -87,22 +84,6 @@ export function useDashboardSummary(householdId: string | undefined) {
         .order('date', { ascending: false })
 
       if (expensesError) throw expensesError
-
-      // サブスク合計を取得（対象期間に契約していたもの）
-      // 条件: contract_date <= 期間終了日 AND (cancelled_at IS NULL OR cancelled_at >= 期間開始日)
-      const { data: subscriptions, error: subsError } = await supabase
-        .from('subscriptions')
-        .select('monthly_amount')
-        .eq('household_id', householdId)
-        .lte('contract_date', period.end_date)
-        .or(`cancelled_at.is.null,cancelled_at.gte.${period.start_date}`)
-
-      if (subsError) throw subsError
-
-      const subscriptionTotal = subscriptions.reduce(
-        (sum, sub) => sum + sub.monthly_amount,
-        0
-      )
 
       // 残り回数を取得
       const { data: remainingCounts, error: remainingError } = await supabase.rpc(
@@ -189,36 +170,11 @@ export function useDashboardSummary(householdId: string | undefined) {
         >
       )
 
-      // サブスクを別枠として追加
-      if (subscriptionTotal > 0) {
-        userTotals['subscription'] = {
-          userId: 'subscription',
-          userName: 'サブスク',
-          nickname: 'サブスク',
-          amount: subscriptionTotal,
-          count: subscriptions.length,
-          isSubscription: true,
-        }
-      }
-
-      // カテゴリ別にもサブスクを追加
-      if (subscriptionTotal > 0) {
-        categoryTotals['subscription'] = {
-          categoryId: 'subscription',
-          categoryName: 'サブスク',
-          icon: '🔄',
-          amount: subscriptionTotal,
-          count: subscriptions.length,
-        }
-      }
-
       const categoryTotalsArray = Object.values(categoryTotals) as CategoryTotal[]
       const userTotalsArray = Object.values(userTotals) as UserTotal[]
 
       return {
         totalExpense,
-        subscriptionTotal,
-        variableExpense: totalExpense,
         expenses: expenses.slice(0, 5) as ExpenseWithRelations[], // 直近5件
         categoryTotals: categoryTotalsArray.sort((a, b) => b.amount - a.amount),
         userTotals: userTotalsArray,
