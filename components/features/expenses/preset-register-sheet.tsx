@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { CalendarIcon } from 'lucide-react'
@@ -39,6 +40,7 @@ export function PresetRegisterSheet({
   householdId,
   userId,
 }: PresetRegisterSheetProps) {
+  const router = useRouter()
   const { data: presets = [] } = usePresets(householdId)
   const bulkCreate = useBulkCreateFromPreset()
 
@@ -89,6 +91,7 @@ export function PresetRegisterSheet({
       })
       toast.success(`「${selectedPreset.name}」から${validItems.length}件を登録しました`)
       handleClose()
+      router.push('/')
     } catch {
       toast.error('登録に失敗しました')
     }
@@ -126,11 +129,18 @@ export function PresetRegisterSheet({
               ) : (
                 presets.map((preset) => {
                   const total = preset.items.reduce((sum, item) => sum + item.amount, 0)
+                  const isEmpty = preset.items.length === 0
                   return (
                     <button
                       key={preset.id}
-                      className="w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-                      onClick={() => handleSelectPreset(preset)}
+                      className={cn(
+                        'w-full rounded-lg border p-4 text-left transition-colors',
+                        isEmpty
+                          ? 'cursor-not-allowed opacity-50'
+                          : 'hover:bg-accent'
+                      )}
+                      onClick={() => !isEmpty && handleSelectPreset(preset)}
+                      disabled={isEmpty}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{preset.name}</span>
@@ -138,18 +148,24 @@ export function PresetRegisterSheet({
                           {preset.items.length}件 / ¥{total.toLocaleString()}
                         </span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {preset.items.slice(0, 5).map((item) => (
-                          <span key={item.id} className="text-xs text-muted-foreground">
-                            {item.category?.icon}{item.category?.name}
-                          </span>
-                        ))}
-                        {preset.items.length > 5 && (
-                          <span className="text-xs text-muted-foreground">
-                            ...他{preset.items.length - 5}件
-                          </span>
-                        )}
-                      </div>
+                      {isEmpty ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          項目がありません。設定画面から項目を追加してください。
+                        </p>
+                      ) : (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {preset.items.slice(0, 5).map((item) => (
+                            <span key={item.id} className="text-xs text-muted-foreground">
+                              {item.category?.icon}{item.category?.name}
+                            </span>
+                          ))}
+                          {preset.items.length > 5 && (
+                            <span className="text-xs text-muted-foreground">
+                              ...他{preset.items.length - 5}件
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </button>
                   )
                 })

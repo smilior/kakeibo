@@ -145,11 +145,13 @@ export default function PresetsPage() {
     }
 
     try {
+      const familyMemberId = itemFamilyMemberId && itemFamilyMemberId !== 'none' ? itemFamilyMemberId : null
+
       if (editingItemId) {
         await updatePresetItem.mutateAsync({
           id: editingItemId,
           category_id: itemCategoryId,
-          family_member_id: itemFamilyMemberId || null,
+          family_member_id: familyMemberId,
           amount: itemAmount,
           memo: itemMemo || '',
         })
@@ -158,7 +160,7 @@ export default function PresetsPage() {
         await createPresetItem.mutateAsync({
           preset_id: itemPresetId,
           category_id: itemCategoryId,
-          family_member_id: itemFamilyMemberId || null,
+          family_member_id: familyMemberId,
           amount: itemAmount,
           memo: itemMemo || '',
         })
