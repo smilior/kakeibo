@@ -26,6 +26,9 @@ import { PeriodAnalysisCard } from './period-analysis-card'
 import { ExpenseDetailSheet } from './expense-detail-sheet'
 import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
 import { UserComparisonChart } from '@/components/features/dashboard/user-comparison-chart'
+import { ExpenseTrackerCard } from '@/components/features/dashboard/expense-tracker-card'
+import { useTrackers } from '@/lib/queries/trackers'
+import { aggregateTrackers } from '@/lib/utils/tracker-aggregation'
 import {
   BarChart,
   Bar,
@@ -58,6 +61,7 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 })
 
   const { data, isLoading } = useWeeklyExpenses(householdId, currentWeek)
+  const { data: trackers = [] } = useTrackers(householdId)
 
   const handlePrevWeek = () => setCurrentWeek(subWeeks(currentWeek, 1))
   const handleNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1))
@@ -143,6 +147,13 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
       amount,
       name: weekDays[index],
     }))
+
+  // トラッカー集計
+  const trackerSummaries = aggregateTrackers(
+    trackers.map((t) => ({ id: t.id, category_id: t.category_id, category: t.category })),
+    currentExpenses,
+    previousExpenses
+  )
 
   // AI分析用: 常に先週の開始日（振り返りは完結した期間で行う）
   const lastWeekStart = getLastWeekStart()
@@ -251,6 +262,13 @@ export function WeeklyAnalytics({ householdId }: WeeklyAnalyticsProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* トラッカー */}
+          <ExpenseTrackerCard
+            trackers={trackerSummaries}
+            expenses={currentExpenses}
+            periodLabel="週間"
+          />
 
           {/* カテゴリ別・ユーザー別 */}
           <div className="grid gap-4 sm:grid-cols-2">

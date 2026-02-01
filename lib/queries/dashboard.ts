@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { aggregateTrackers } from '@/lib/utils/tracker-aggregation'
+import type { TrackerSummary } from '@/lib/utils/tracker-aggregation'
 import type { Expense, Category, User, FamilyMember } from '@/types/database'
 
 // 型定義
@@ -42,10 +44,12 @@ export interface PeriodInfo {
 export interface DashboardSummary {
   totalExpense: number
   expenses: ExpenseWithRelations[]
+  allExpenses: ExpenseWithRelations[]
   categoryTotals: CategoryTotal[]
   userTotals: UserTotal[]
   remainingCounts: RemainingCount[]
   period: PeriodInfo
+  trackerSummaries: TrackerSummary[]
 }
 
 export function useDashboardSummary(householdId: string | undefined) {
@@ -92,6 +96,53 @@ export function useDashboardSummary(householdId: string | undefined) {
       )
 
       if (remainingError) throw remainingError
+
+      // トラッカー設定を取得
+      const { data: trackers } = await supabase
+        .from('expense_trackers')
+        .select(`
+          *,
+          category:categories(id, name, icon)
+        `)
+        .eq('household_id', householdId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+
+      // 前期間の支出を取得（トラッカー比較用）
+      let previousExpenses: { category_id: string; amount: number }[] = []
+      if (trackers && trackers.length > 0) {
+        // 前期間の日付を計算（現在の期間と同じ長さ分遡る）
+        const periodStartDate = new Date(period.start_date)
+        const periodEndDate = new Date(period.end_date)
+        const periodDays = Math.ceil(
+          (periodEndDate.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        const prevEnd = new Date(periodStartDate)
+        prevEnd.setDate(prevEnd.getDate() - 1)
+        const prevStart = new Date(prevEnd)
+        prevStart.setDate(prevStart.getDate() - periodDays)
+
+        const trackerCategoryIds = trackers.map((t) => t.category_id)
+
+        const { data: prevData } = await supabase
+          .from('expenses')
+          .select('category_id, amount')
+          .eq('household_id', householdId)
+          .gte('date', prevStart.toISOString().split('T')[0])
+          .lte('date', prevEnd.toISOString().split('T')[0])
+          .in('category_id', trackerCategoryIds)
+
+        previousExpenses = prevData || []
+      }
+
+      // トラッカー集計
+      const trackerSummaries = trackers
+        ? aggregateTrackers(
+            trackers as { id: string; category_id: string; category: Category | null }[],
+            expenses,
+            previousExpenses
+          )
+        : []
 
       // 集計
       const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0)
@@ -176,6 +227,7 @@ export function useDashboardSummary(householdId: string | undefined) {
       return {
         totalExpense,
         expenses: expenses.slice(0, 5) as ExpenseWithRelations[], // 直近5件
+        allExpenses: expenses as ExpenseWithRelations[],
         categoryTotals: categoryTotalsArray.sort((a, b) => b.amount - a.amount),
         userTotals: userTotalsArray,
         remainingCounts: (remainingCounts || []) as RemainingCount[],
@@ -183,6 +235,7 @@ export function useDashboardSummary(householdId: string | undefined) {
           startDate: period.start_date,
           endDate: period.end_date,
         },
+        trackerSummaries,
       }
     },
     enabled: !!householdId,

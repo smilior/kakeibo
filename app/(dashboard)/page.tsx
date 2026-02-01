@@ -5,6 +5,7 @@ import { useDashboardSummary } from '@/lib/queries/dashboard'
 import { DailyAdviceCard } from '@/components/features/dashboard/daily-advice-card'
 import { SummaryCard } from '@/components/features/dashboard/summary-card'
 import { RemainingCounts } from '@/components/features/dashboard/remaining-counts'
+import { ExpenseTrackerCard } from '@/components/features/dashboard/expense-tracker-card'
 import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
 import { UserComparisonChart } from '@/components/features/dashboard/user-comparison-chart'
 import { RecentExpenses } from '@/components/features/dashboard/recent-expenses'
@@ -31,6 +32,11 @@ export default function DashboardPage() {
       />
 
       <RemainingCounts counts={summary?.remainingCounts ?? []} />
+
+      <ExpenseTrackerCard
+        trackers={summary?.trackerSummaries ?? []}
+        expenses={summary?.allExpenses ?? []}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <CategoryPieChart data={summary?.categoryTotals ?? []} />

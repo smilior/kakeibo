@@ -13,6 +13,9 @@ import { PeriodAnalysisCard } from './period-analysis-card'
 import { ExpenseDetailSheet } from './expense-detail-sheet'
 import { CategoryPieChart } from '@/components/features/dashboard/category-pie-chart'
 import { UserComparisonChart } from '@/components/features/dashboard/user-comparison-chart'
+import { ExpenseTrackerCard } from '@/components/features/dashboard/expense-tracker-card'
+import { useTrackers } from '@/lib/queries/trackers'
+import { aggregateTrackers } from '@/lib/utils/tracker-aggregation'
 import {
   BarChart,
   Bar,
@@ -42,6 +45,7 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
   const [sheetExpenses, setSheetExpenses] = useState<ExpenseWithRelations[]>([])
 
   const { data, isLoading } = useMonthlyComparison(householdId, currentMonth)
+  const { data: trackers = [] } = useTrackers(householdId)
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
@@ -142,6 +146,13 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
       categoryId: item.categoryId,
       expenses: currentExpenses.filter((e) => e.category_id === item.categoryId),
     }))
+
+  // トラッカー集計
+  const trackerSummaries = aggregateTrackers(
+    trackers.map((t) => ({ id: t.id, category_id: t.category_id, category: t.category })),
+    currentExpenses,
+    previousExpenses
+  )
 
   // AI分析用: 先月の締め日ベースの開始日（振り返りは完結した期間で行う）
   const periodStartStr = data?.previousStart || ''
@@ -300,6 +311,13 @@ export function MonthlyAnalytics({ householdId }: MonthlyAnalyticsProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* トラッカー */}
+          <ExpenseTrackerCard
+            trackers={trackerSummaries}
+            expenses={currentExpenses}
+            periodLabel="月間"
+          />
 
           {/* カテゴリ別・ユーザー別 */}
           <div className="grid gap-4 sm:grid-cols-2">
