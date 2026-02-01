@@ -70,7 +70,7 @@ export function PresetRegisterSheet({
     const items = selectedPreset.items.map((item) => ({
       category_id: item.category_id,
       family_member_id: item.family_member_id,
-      amount: amounts[item.id] || item.amount,
+      amount: amounts[item.id] ?? item.amount,
       memo: item.memo,
     }))
 
@@ -106,7 +106,7 @@ export function PresetRegisterSheet({
   }
 
   const totalAmount = selectedPreset
-    ? selectedPreset.items.reduce((sum, item) => sum + (amounts[item.id] || item.amount), 0)
+    ? selectedPreset.items.reduce((sum, item) => sum + (amounts[item.id] ?? item.amount), 0)
     : 0
 
   return (
@@ -228,7 +228,7 @@ export function PresetRegisterSheet({
                       <Input
                         type="number"
                         className="w-24 text-right"
-                        value={amounts[item.id] || ''}
+                        value={amounts[item.id] ?? ''}
                         onChange={(e) =>
                           handleAmountChange(item.id, parseInt(e.target.value) || 0)
                         }

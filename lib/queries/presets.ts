@@ -224,18 +224,17 @@ export function useBulkCreateFromPreset() {
 
       if (error) throw error
 
-      // LINE通知を1回だけ送信
-      try {
-        await fetch('/api/line/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            presetName: input.presetName,
-            count: input.items.length,
-          }),
-        })
-      } catch (e) {
-        console.error('LINE notify failed:', e)
+      // LINE通知: 登録した最初の支出IDで通知
+      if (data && data.length > 0) {
+        try {
+          await fetch('/api/line/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expenseId: data[0].id }),
+          })
+        } catch (e) {
+          console.error('LINE notify failed:', e)
+        }
       }
 
       return data
