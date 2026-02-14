@@ -33,18 +33,15 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // 認証が必要なパス
-  const protectedPaths = [
-    '/',
-    '/expenses',
-    '/analytics',
-    '/settings',
-  ]
-  const isProtectedPath = protectedPaths.some(
-    (path) =>
-      request.nextUrl.pathname === path ||
-      request.nextUrl.pathname.startsWith(`${path}/`)
-  )
+  // 認証が必要なパス（'/' は完全一致のみ）
+  const protectedPaths = ['/expenses', '/analytics', '/settings']
+  const isProtectedPath =
+    request.nextUrl.pathname === '/' ||
+    protectedPaths.some(
+      (path) =>
+        request.nextUrl.pathname === path ||
+        request.nextUrl.pathname.startsWith(`${path}/`)
+    )
 
   // 未認証ユーザーの保護ルートアクセスをブロック
   if (
@@ -56,14 +53,24 @@ export async function updateSession(request: NextRequest) {
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    // セッション更新クッキーを引き継ぐ
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+      redirectResponse.cookies.set(name, value, options)
+    })
+    return redirectResponse
   }
 
   // 認証済みユーザーのログインページアクセスをリダイレクト
   if (user && request.nextUrl.pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    // セッション更新クッキーを引き継ぐ
+    supabaseResponse.cookies.getAll().forEach(({ name, value, ...options }) => {
+      redirectResponse.cookies.set(name, value, options)
+    })
+    return redirectResponse
   }
 
   return supabaseResponse
